@@ -1,9 +1,9 @@
 public class block{
-    private int x,y;
-    boolean isWhite;
-    public block(int x, int y, boolean isWhite) {
-        this.x = x;
-        this.y = y;
-        this.isWhite = isWhite;
+    private int row,col;
+    boolean hasPiece;
+    public block(int row, int col) {
+        this.row = row;
+        this.col = col;
+        this.hasPiece = false;
     }
 }
