@@ -1,10 +1,10 @@
-public class block{
+public class Block{
     int row,col;
     Piece piece;
-    public block(int row, int col) {
+    public Block(int row, int col) {
         this.row = row;
         this.col = col;
-        this.piece = null;
+        piece = null;
     }
 
     public boolean hasPiece() {
