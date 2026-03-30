@@ -34,7 +34,7 @@ public class GUI extends JFrame {
         JPanel panel = new JPanel(new GridLayout(3, 1));
         JButton btnServer = new JButton("create match (Server)");
         JButton btnClient = new JButton("join match (Client)");
-        logArea = new JTextArea("waiting for connection...");
+        logArea = new JTextArea("waiting for selection...");
         logArea.setEditable(false);
 
         btnServer.addActionListener(e -> {
