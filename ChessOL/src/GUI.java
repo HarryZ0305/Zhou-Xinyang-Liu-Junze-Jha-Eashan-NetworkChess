@@ -37,9 +37,12 @@ public class GUI extends JFrame {
         logArea = new JTextArea("waiting for connection...");
         logArea.setEditable(false);
 
-        btnServer.addActionListener(e -> startNetwork(true, "10.9.137.33"));
+        btnServer.addActionListener(e -> {
+            String ip = JOptionPane.showInputDialog("Input host IP:", "127.0.0.1");
+            if (ip != null) startNetwork(true, ip);
+        });
         btnClient.addActionListener(e -> {
-            String ip = JOptionPane.showInputDialog("input IP:", "127.0.0.1");
+            String ip = JOptionPane.showInputDialog("Input client IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
 
