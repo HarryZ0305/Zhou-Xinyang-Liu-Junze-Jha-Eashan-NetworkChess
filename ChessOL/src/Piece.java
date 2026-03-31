@@ -1,11 +1,17 @@
-public class Piece {
+public abstract class Piece {
     int row, col;
-    String type;
-    Boolean isWhite;
-    public Piece(int row, int col, String type, Boolean isWhite) {
+    boolean isWhite;
+
+    public Piece(int row, int col, boolean isWhite) {
         this.row = row;
         this.col = col;
-        this.type = type;
         this.isWhite = isWhite;
+    }
+
+    // Every subclass MUST implement this
+    public abstract boolean isValidMove(int toRow, int toCol, Piece[][] board);
+
+    public String getType() {
+        return this.getClass().getSimpleName(); // returns "Pawn", "Rook", etc.
     }
 }
