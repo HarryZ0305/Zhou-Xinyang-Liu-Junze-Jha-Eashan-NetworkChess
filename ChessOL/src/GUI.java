@@ -15,13 +15,15 @@ public class GUI extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         // 1. 初始菜单界面
-        JPanel menu = new JPanel(new GridLayout(2, 1));
-        JButton btnServer = new JButton("作为主机 (Server)");
-        JButton btnClient = new JButton("作为客户端 (Client)");
-        
+        JPanel menu = new JPanel(null);
+        JButton btnServer = new JButton("Server");
+        btnServer.setBounds(10, 10, 200, 50);
+        JButton btnClient = new JButton("Client");
+        btnClient.setBounds(220, 10, 200, 50);
+
         btnServer.addActionListener(e -> startNetwork(true, null));
         btnClient.addActionListener(e -> {
-            String ip = JOptionPane.showInputDialog("输入主机 IP:", "127.0.0.1");
+            String ip = JOptionPane.showInputDialog("Input Server IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
 
@@ -39,7 +41,7 @@ public class GUI extends JFrame {
             if (out != null) {
                 String msg = inputField.getText();
                 out.println(msg); // 【发送】
-                logArea.append("我: " + msg + "\n");
+                logArea.append("Me: " + msg + "\n");
                 inputField.setText("");
             }
         });
@@ -55,7 +57,7 @@ public class GUI extends JFrame {
             try {
                 Socket s;
                 if (isServer) {
-                    SwingUtilities.invokeLater(() -> logArea.append("等待连接...\n"));
+                    SwingUtilities.invokeLater(() -> logArea.append("Waiting for connection...\n"));
                     s = new ServerSocket(8888).accept();
                 } else {
                     s = new Socket(ip, 8888);
@@ -71,10 +73,10 @@ public class GUI extends JFrame {
                 while ((line = in.readLine()) != null) {
                     String received = line;
                     // 将收到的信息返回到 GUI
-                    SwingUtilities.invokeLater(() -> logArea.append("对方: " + received + "\n"));
+                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + received + "\n"));
                 }
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "连接错误: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Connection error: " + ex.getMessage());
             }
         }).start();
     }
