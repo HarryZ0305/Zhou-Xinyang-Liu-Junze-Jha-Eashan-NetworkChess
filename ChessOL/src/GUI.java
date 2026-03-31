@@ -14,7 +14,7 @@ public class GUI extends JFrame {
         setSize(640, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // 1. 初始菜单界面
+        //menu
         JPanel menu = new JPanel(null);
         JButton btnServer = new JButton("Server");
         btnServer.setBounds(10, 10, 200, 50);
@@ -30,17 +30,17 @@ public class GUI extends JFrame {
         menu.add(btnServer);
         menu.add(btnClient);
 
-        // 2. 收发消息界面
+        //chat
         JPanel chat = new JPanel(new BorderLayout());
         logArea.setEditable(false);
         chat.add(new JScrollPane(logArea), BorderLayout.CENTER);
         chat.add(inputField, BorderLayout.SOUTH);
 
-        // 发送逻辑：回车触发
+        //return key sends message
         inputField.addActionListener(e -> {
             if (out != null) {
                 String msg = inputField.getText();
-                out.println(msg); // 【发送】
+                out.println(msg); //send
                 logArea.append("Me: " + msg + "\n");
                 inputField.setText("");
             }
@@ -53,33 +53,40 @@ public class GUI extends JFrame {
     }
 
     private void startNetwork(boolean isServer, String ip) {
-        new Thread(() -> {
-            try {
-                Socket s;
-                if (isServer) {
-                    SwingUtilities.invokeLater(() -> logArea.append("Waiting for connection...\n"));
-                    s = new ServerSocket(8888).accept();
-                } else {
-                    s = new Socket(ip, 8888);
-                }
+    ((CardLayout)cards.getLayout()).show(cards, "CHAT");
 
-                // 连接成功，切换界面
-                out = new PrintWriter(s.getOutputStream(), true);
-                SwingUtilities.invokeLater(() -> ((CardLayout)cards.getLayout()).show(cards, "CHAT"));
-
-                // 【接收逻辑】：开启监听死循环
-                BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                String line;
-                while ((line = in.readLine()) != null) {
-                    String received = line;
-                    // 将收到的信息返回到 GUI
-                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + received + "\n"));
-                }
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Connection error: " + ex.getMessage());
+    new Thread(() -> {
+        try {
+            Socket s;
+            if (isServer) {
+                SwingUtilities.invokeLater(() -> logArea.append("Waiting for connection on port 8888...\n"));
+                ServerSocket server = new ServerSocket(8888);
+                s = server.accept(); //stop until client connects
+                SwingUtilities.invokeLater(() -> logArea.append("Client connected!\n"));
+            } else {
+                SwingUtilities.invokeLater(() -> logArea.append("Connecting to " + ip + "...\n"));
+                s = new Socket(ip, 8888);
+                SwingUtilities.invokeLater(() -> logArea.append("Connected to Server!\n"));
             }
-        }).start();
-    }
+
+            //initialization after connection
+            out = new PrintWriter(s.getOutputStream(), true);
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            String line;
+            while ((line = in.readLine()) != null) {
+                String received = line;
+                SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + received + "\n"));
+            }
+        } catch (Exception ex) {
+            //go back to menu and show error message
+            SwingUtilities.invokeLater(() -> {
+                JOptionPane.showMessageDialog(this, "Connection error: " + ex.getMessage());
+                ((CardLayout)cards.getLayout()).show(cards, "MENU");
+            });
+        }
+    }).start();
+}
 
     public static void main(String[] args) { new GUI(); }
 }
