@@ -10,7 +10,7 @@ public class GUI extends JFrame {
 
     public GUI() {
         setTitle("Net Skeleton");
-        setSize(300, 400);
+        setSize(640, 700);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         // 布局：上面显示，下面输入
@@ -60,5 +60,7 @@ public class GUI extends JFrame {
         }).start();
     }
 
-    public static void main(String[] args) { new GUI(); }
+    public static void main(String[] args) {
+        new GUI(); 
+    }
 }
