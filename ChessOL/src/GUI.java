@@ -10,83 +10,75 @@ public class GUI extends JFrame {
     private PrintWriter out;
 
     public GUI() {
-        setTitle("Net Skeleton");
-        setSize(640, 700);
+        setTitle("Network Skeleton");
+        setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         //menu
         JPanel menu = new JPanel(null);
         JButton btnServer = new JButton("Server");
-        btnServer.setBounds(10, 10, 200, 50);
+        btnServer.setBounds(50, 50, 150, 40);
         JButton btnClient = new JButton("Client");
-        btnClient.setBounds(220, 10, 200, 50);
+        btnClient.setBounds(250, 50, 150, 40);
 
         btnServer.addActionListener(e -> startNetwork(true, null));
         btnClient.addActionListener(e -> {
-            String ip = JOptionPane.showInputDialog("Input Server IP:", "127.0.0.1");
+            String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
+        menu.add(btnServer); menu.add(btnClient);
 
-        menu.add(btnServer);
-        menu.add(btnClient);
-
-        //chat
-        JPanel chat = new JPanel(new BorderLayout());
+        //board
+        JPanel workPanel = new JPanel(new BorderLayout());
         logArea.setEditable(false);
-        chat.add(new JScrollPane(logArea), BorderLayout.CENTER);
-        chat.add(inputField, BorderLayout.SOUTH);
+        workPanel.add(new JScrollPane(logArea), BorderLayout.CENTER);
+        workPanel.add(inputField, BorderLayout.SOUTH);
 
-        //return key sends message
+        //send
         inputField.addActionListener(e -> {
             if (out != null) {
-                String msg = inputField.getText();
-                out.println(msg); //send
-                logArea.append("Me: " + msg + "\n");
+                out.println(inputField.getText());
+                logArea.append("Me: " + inputField.getText() + "\n");
                 inputField.setText("");
             }
         });
 
         cards.add(menu, "MENU");
-        cards.add(chat, "CHAT");
+        cards.add(workPanel, "WORK");
         add(cards);
         setVisible(true);
     }
 
     private void startNetwork(boolean isServer, String ip) {
-    ((CardLayout)cards.getLayout()).show(cards, "CHAT");
+        //switch page
+        ((CardLayout)cards.getLayout()).show(cards, "WORK");
 
-    new Thread(() -> {
-        try {
-            Socket s;
-            if (isServer) {
-                SwingUtilities.invokeLater(() -> logArea.append("Waiting for connection on port 8888...\n"));
-                ServerSocket server = new ServerSocket(8888);
-                s = server.accept(); //stop until client connects
-                SwingUtilities.invokeLater(() -> logArea.append("Client connected!\n"));
-            } else {
-                SwingUtilities.invokeLater(() -> logArea.append("Connecting to " + ip + "...\n"));
-                s = new Socket(ip, 8888);
-                SwingUtilities.invokeLater(() -> logArea.append("Connected to Server!\n"));
+        new Thread(() -> {
+            try {
+                Socket s;
+                if (isServer) {
+                    logArea.append("Waiting for client on 8888...\n");
+                    s = new ServerSocket(8888).accept();
+                } else {
+                    logArea.append("Connecting to " + ip + "...\n");
+                    s = new Socket(ip, 8888);
+                }
+                
+                out = new PrintWriter(s.getOutputStream(), true);
+                logArea.append("System: Connected!\n");
+
+                //recive
+                BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+                String line;
+                while ((line = in.readLine()) != null) {
+                    String msg = line;
+                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + msg + "\n"));
+                }
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
             }
-
-            //initialization after connection
-            out = new PrintWriter(s.getOutputStream(), true);
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-            String line;
-            while ((line = in.readLine()) != null) {
-                String received = line;
-                SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + received + "\n"));
-            }
-        } catch (Exception ex) {
-            //go back to menu and show error message
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(this, "Connection error: " + ex.getMessage());
-                ((CardLayout)cards.getLayout()).show(cards, "MENU");
-            });
-        }
-    }).start();
-}
+        }).start();
+    }
 
     public static void main(String[] args) { new GUI(); }
 }
