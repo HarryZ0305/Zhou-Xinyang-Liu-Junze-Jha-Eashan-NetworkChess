@@ -27,6 +27,11 @@ public class Game {
 
         whitePlayer = new Player("White", true);
         blackPlayer = new Player("Black", false);
+        for(int i=0; i<8; i++){
+            whitePlayer.pieces.add(board[6][i]);
+            blackPlayer.pieces.add(board[1][i]);
+        }
+
         whiteTurn = true;//can change to random
     }
 
@@ -40,11 +45,19 @@ public class Game {
         if(board[x2][y2] == null){
             board[x2][y2] = board[x1][y1];
             board[x1][y1] = null;
+        }else{
+            capture(x1, y1, x2, y2, isWhite);
         }
     }
 
     public void capture(int x1, int y1, int x2, int y2, boolean isWhite){
-        
+        Piece captured = board[x2][y2];
+        if(isWhite){
+            blackPlayer.pieces.remove(captured);
+        }else{
+            whitePlayer.pieces.remove(captured);
+        }
+
     }
 
     public static void main(String[] args) {
