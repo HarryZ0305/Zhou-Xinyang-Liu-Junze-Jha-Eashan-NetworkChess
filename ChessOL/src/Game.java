@@ -36,9 +36,17 @@ public class Game {
     }
 
 
-    public boolean canMove(int x1, int y1, int x2, int y2, boolean isWhite){
+    public boolean canMove(int x1, int y1, int x2, int y2){
         Piece piece = board[x1][y1];
-        return piece.isValidMove(x2, y2, board);
+        Piece target = board[x2][y2];
+        if(piece.isValidMove(x2, y2, board)){
+            if(target.isWhite == piece.isWhite){
+                return false;
+            }
+            return true;
+        }else{
+            return false;
+        }
     }
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
@@ -50,14 +58,14 @@ public class Game {
         }
     }
 
-    public void capture(int x1, int y1, int x2, int y2, boolean isWhite){
+    public Piece capture(int x1, int y1, int x2, int y2, boolean isWhite){
         Piece captured = board[x2][y2];
         if(isWhite){
             blackPlayer.pieces.remove(captured);
         }else{
             whitePlayer.pieces.remove(captured);
         }
-
+        return captured;
     }
 
     public static void main(String[] args) {
