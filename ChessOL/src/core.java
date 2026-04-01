@@ -1,4 +1,4 @@
-public class main {
+public class core {
     public static void main(String[] args) {
         Board board = new Board();
         Player whitePlayer = new Player("White", true);
