@@ -36,17 +36,17 @@ public class Game {
     }
 
 
-    public boolean canMove(int x1, int y1, int x2, int y2){
+    public boolean canMove(int x1, int y1, int x2, int y2, boolean isWhite){
         Piece piece = board[x1][y1];
         Piece target = board[x2][y2];
         if(piece.isValidMove(x2, y2, board)){
-            if(target.isWhite == piece.isWhite){
-                return false;
+            if(target == null || target.isWhite != piece.isWhite){
+                if(isWhite == piece.isWhite){
+                    return true;
+                }
             }
-            return true;
-        }else{
-            return false;
         }
+        return false;
     }
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
