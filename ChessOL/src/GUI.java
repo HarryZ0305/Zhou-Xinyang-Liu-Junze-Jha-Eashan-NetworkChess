@@ -79,7 +79,12 @@ public class GUI extends JFrame {
                     int x2 = Integer.parseInt(parts[2]);
                     int y2 = Integer.parseInt(parts[3]);
                     boolean isWhite = Boolean.parseBoolean(parts[4]);
-                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + msg + "\n"));
+                    if(game.canMove(x1, y1, x2, y2, isWhite)){
+                        game.Move(x1, y1, x2, y2, isWhite);
+                        SwingUtilities.invokeLater(() -> logArea.append("move" + x1+" "+y1+" "+x2+" "+y2+" "+isWhite + "\n"));
+                    }else{
+                        SwingUtilities.invokeLater(() -> logArea.append("error"+"\n"));
+                    }
                 }
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
