@@ -73,6 +73,12 @@ public class GUI extends JFrame {
                 String line;
                 while ((line = in.readLine()) != null) {
                     String msg = line;
+                    String[] parts = msg.split(",");
+                    int x1 = Integer.parseInt(parts[0]);
+                    int y1 = Integer.parseInt(parts[1]);
+                    int x2 = Integer.parseInt(parts[2]);
+                    int y2 = Integer.parseInt(parts[3]);
+                    boolean isWhite = Boolean.parseBoolean(parts[4]);
                     SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + msg + "\n"));
                 }
             } catch (Exception e) {
