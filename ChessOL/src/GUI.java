@@ -74,17 +74,7 @@ public class GUI extends JFrame {
                 while ((line = in.readLine()) != null) {
                     String msg = line;
                     String[] parts = msg.split(",");
-                    int x1 = Integer.parseInt(parts[0]);
-                    int y1 = Integer.parseInt(parts[1]);
-                    int x2 = Integer.parseInt(parts[2]);
-                    int y2 = Integer.parseInt(parts[3]);
-                    boolean isWhite = Boolean.parseBoolean(parts[4]);
-                    if(game.canMove(x1, y1, x2, y2, isWhite)){
-                        game.Move(x1, y1, x2, y2, isWhite);
-                        SwingUtilities.invokeLater(() -> logArea.append("move" + x1+" "+y1+" "+x2+" "+y2+" "+isWhite + "\n"));
-                    }else{
-                        SwingUtilities.invokeLater(() -> logArea.append("error"+"\n"));
-                    }
+                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + parts[0] + "\n"));
                 }
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
