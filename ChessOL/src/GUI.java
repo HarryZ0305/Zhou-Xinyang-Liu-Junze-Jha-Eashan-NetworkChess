@@ -81,6 +81,7 @@ public class GUI extends JFrame {
                     boolean c=game.canMove(x1, y1, x2, y2, isWhite);
                     if(c){
                         SwingUtilities.invokeLater(() -> logArea.append("True"+ "\n"));
+                        game.Move(x1, y1, x2, y2, isWhite);
                     }else{
                         SwingUtilities.invokeLater(() -> logArea.append("False"+ "\n"));
                     }
