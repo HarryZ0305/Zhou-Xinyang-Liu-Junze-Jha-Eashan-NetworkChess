@@ -50,12 +50,13 @@ public class Game {
     }
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
-        if(board[x2][y2] == null){
-            board[x2][y2] = board[x1][y1];
-            board[x1][y1] = null;
-        }else{
+        if(board[x2][y2] != null){
             capture(x1, y1, x2, y2, isWhite);
         }
+        board[x2][y2] = board[x1][y1];
+        board[x1][y1] = null;
+        board[x2][y2].row = x2;
+        board[x2][y2].col = y2;
     }
 
     public Piece capture(int x1, int y1, int x2, int y2, boolean isWhite){
