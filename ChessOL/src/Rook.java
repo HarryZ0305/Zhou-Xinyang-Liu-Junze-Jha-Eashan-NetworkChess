@@ -21,7 +21,7 @@ public class Rook extends Piece {
         
         //Move one tile in the direction of where it wants to go
         int rCheck = row + rDir;
-        int cCheck = row + cDir;
+        int cCheck = col + cDir;
         
         while(rCheck != row || cCheck != col) {
         	if(board[rCheck][cCheck] != null) {
