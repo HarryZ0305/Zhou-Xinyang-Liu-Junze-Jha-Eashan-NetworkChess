@@ -44,7 +44,7 @@ public class Game {
                 if(isWhite == piece.isWhite){
                     return true;
                 }
-            }
+            } 
         }
         return false;
     }
