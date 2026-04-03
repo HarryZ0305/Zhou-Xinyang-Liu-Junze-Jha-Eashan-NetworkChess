@@ -5,6 +5,27 @@ public class Rook extends Piece {
 
     @Override
     public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
-        return toRow == row || toCol == col; // same row OR same column
+        if(toRow != row && toCol != col) {
+        	return false;
+        }
+    	
+        //One of them will be 0
+        int rDir = Integer.compare(toRow, row);
+        int cDir = Integer.compare(toCol, col);
+        
+        //Move one tile in the direction of where it wants to go
+        int rCheck = row + rDir;
+        int cCheck = row + cDir;
+        
+        while(rCheck != row || cCheck != col) {
+        	if(board[rCheck][cCheck] != null) {
+        		return false; //Another piece in its path
+        	}
+        	//Move again
+        	rCheck += rDir;
+        	cCheck += cDir;
+        }
+            	
+    	return true;
     }
 }
