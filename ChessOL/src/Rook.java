@@ -23,7 +23,7 @@ public class Rook extends Piece {
         int rCheck = row + rDir;
         int cCheck = col + cDir;
         
-        while(rCheck != row || cCheck != col) {
+        while(rCheck != toRow || cCheck != toCol) {
         	if(board[rCheck][cCheck] != null) {
         		return false; //Another piece in its path
         	}
