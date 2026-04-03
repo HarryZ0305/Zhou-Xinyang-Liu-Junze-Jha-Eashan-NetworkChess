@@ -39,7 +39,11 @@ public class GUI extends JFrame {
         inputField.addActionListener(e -> {
             if (out != null) {
                 out.println(inputField.getText());
-                logArea.append("Me: " + inputField.getText() + "\n");
+                if (out.checkError()) {
+                    logArea.append("System: Send failed, connection lost.\n");
+                } else {
+                    logArea.append("Me: " + inputField.getText() + "\n");
+                }
                 inputField.setText("");
             }
         });
@@ -90,6 +94,7 @@ public class GUI extends JFrame {
                         SwingUtilities.invokeLater(() -> logArea.append("False"+ "\n"));
                     }
                 }
+                SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage() + "\n"));
                 e.printStackTrace();
