@@ -8,7 +8,7 @@ public class GUI extends JFrame {
     private JTextArea logArea = new JTextArea();
     private JTextField inputField = new JTextField();
     private PrintWriter out;
-    Game game;
+    Game game=new Game();
 
     public GUI() {
         setTitle("Network Skeleton");
@@ -53,7 +53,6 @@ public class GUI extends JFrame {
     private void startNetwork(boolean isServer, String ip) {
         //switch page
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
-
         new Thread(() -> {
             try {
                 Socket s;
