@@ -5,7 +5,13 @@ public class Rook extends Piece {
 
     @Override
     public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
-        if(toRow != row && toCol != col) {
+        //Check if the move is valid
+    	if(toRow != row && toCol != col) {
+        	return false;
+        }
+        
+        //Check if the potential target is the opposite color
+        if(board[toRow][toCol] != null && board[toRow][toCol].isWhite == isWhite) {
         	return false;
         }
     	
