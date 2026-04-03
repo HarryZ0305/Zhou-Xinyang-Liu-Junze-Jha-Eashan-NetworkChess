@@ -87,7 +87,8 @@ public class GUI extends JFrame {
                     }
                 }
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
+                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage() + "\n"));
+                e.printStackTrace();
             }
         }).start();
     }
