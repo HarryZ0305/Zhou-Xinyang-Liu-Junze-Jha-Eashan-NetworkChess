@@ -38,6 +38,7 @@ public class Game {
 
     public boolean canMove(int x1, int y1, int x2, int y2, boolean isWhite){
         Piece piece = board[x1][y1];
+        if(piece == null) return false;
         Piece target = board[x2][y2];
         if(piece.isValidMove(x2, y2, board)){
             if(target == null || target.isWhite != piece.isWhite){

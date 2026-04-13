@@ -81,17 +81,21 @@ public class GUI extends JFrame {
                         SwingUtilities.invokeLater(() -> logArea.append("Chat: " + msg + "\n"));
                         continue;
                     }
-                    int x1 = Integer.parseInt(parts[0]);
-                    int y1 = Integer.parseInt(parts[1]);
-                    int x2 = Integer.parseInt(parts[2]);
-                    int y2 = Integer.parseInt(parts[3]);
-                    boolean isWhite = Boolean.parseBoolean(parts[4]);
-                    boolean c=game.canMove(x1, y1, x2, y2, isWhite);
-                    if(c){
-                        SwingUtilities.invokeLater(() -> logArea.append("True"+ "\n"));
-                        game.Move(x1, y1, x2, y2, isWhite);
-                    }else{
-                        SwingUtilities.invokeLater(() -> logArea.append("False"+ "\n"));
+                    try {
+                        int x1 = Integer.parseInt(parts[0]);
+                        int y1 = Integer.parseInt(parts[1]);
+                        int x2 = Integer.parseInt(parts[2]);
+                        int y2 = Integer.parseInt(parts[3]);
+                        boolean isWhite = Boolean.parseBoolean(parts[4]);
+                        boolean c=game.canMove(x1, y1, x2, y2, isWhite);
+                        if(c){
+                            SwingUtilities.invokeLater(() -> logArea.append("True"+ "\n"));
+                            game.Move(x1, y1, x2, y2, isWhite);
+                        }else{
+                            SwingUtilities.invokeLater(() -> logArea.append("False"+ "\n"));
+                        }
+                    } catch (Exception ex) {
+                        SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
                 }
                 SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
