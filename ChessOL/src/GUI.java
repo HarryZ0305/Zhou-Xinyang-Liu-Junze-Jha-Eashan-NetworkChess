@@ -61,13 +61,14 @@ public class GUI extends JFrame {
             try {
                 Socket s;
                 if (isServer) {
-                    logArea.append("Waiting for client on 8888...\n");
-                    s = new ServerSocket(8888).accept();
+                    logArea.append("Waiting for client on 443...\n");
+                    try (ServerSocket ss = new ServerSocket(443)) { s = ss.accept(); }
                 } else {
                     logArea.append("Connecting to " + ip + "...\n");
-                    s = new Socket(ip, 8888);
+                    s = new Socket(ip, 443);
                 }
                 
+                s.setKeepAlive(true);
                 out = new PrintWriter(s.getOutputStream(), true);
                 logArea.append("System: Connected!\n");
 
