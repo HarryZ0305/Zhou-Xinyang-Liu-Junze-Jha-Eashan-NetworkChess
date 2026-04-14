@@ -4,7 +4,7 @@ public class King extends Piece {
     }
 
     @Override
-    public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
+    public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         return Math.abs(toRow - row) <= 1 && Math.abs(toCol - col) <= 1;
     }
 }

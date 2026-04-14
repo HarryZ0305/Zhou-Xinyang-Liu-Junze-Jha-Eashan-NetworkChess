@@ -4,7 +4,7 @@ public class Pawn extends Piece {
     }
 
     @Override
-    public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
+    public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         int direction = isWhite ? -1 : 1; // white moves up, black moves down
         return toCol == col && toRow == row + direction;
     }

@@ -4,7 +4,7 @@ public class Bishop extends Piece {
     }
 
     @Override
-    public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
+    public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         return Math.abs(toRow - row) == Math.abs(toCol - col); // diagonal
     }
 }

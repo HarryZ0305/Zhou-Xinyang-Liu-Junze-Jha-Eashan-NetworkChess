@@ -40,7 +40,7 @@ public class Game {
         Piece piece = board[x1][y1];
         if(piece == null) return false;
         Piece target = board[x2][y2];
-        if(piece.isValidMove(x2, y2, board)){
+        if(piece.checkRule(x2, y2, board)){
             if(target == null || target.isWhite != piece.isWhite){
                 if(isWhite == piece.isWhite){
                     return true;
