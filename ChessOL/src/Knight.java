@@ -4,7 +4,7 @@ public class Knight extends Piece {
     }
 
     @Override
-    public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
+    public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         int dr = Math.abs(toRow - row);
         int dc = Math.abs(toCol - col);
         return (dr == 2 && dc == 1) || (dr == 1 && dc == 2);

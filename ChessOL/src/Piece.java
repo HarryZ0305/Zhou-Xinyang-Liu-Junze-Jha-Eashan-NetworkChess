@@ -9,7 +9,7 @@ public abstract class Piece {
     }
 
     // Every subclass MUST implement this
-    public abstract boolean isValidMove(int toRow, int toCol, Piece[][] board);
+    public abstract boolean checkRule(int toRow, int toCol, Piece[][] board);
 
     public String getType() {
         return this.getClass().getSimpleName(); // returns "Pawn", "Rook", etc.

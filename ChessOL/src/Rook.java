@@ -4,7 +4,7 @@ public class Rook extends Piece {
     }
 
     @Override
-    public boolean isValidMove(int toRow, int toCol, Piece[][] board) {
+    public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         //Check if the move is valid
     	if(toRow != row && toCol != col) {
         	return false;
