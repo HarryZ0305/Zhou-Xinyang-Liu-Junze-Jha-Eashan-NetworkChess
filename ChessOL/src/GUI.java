@@ -38,11 +38,27 @@ public class GUI extends JFrame {
         //send
         inputField.addActionListener(e -> {
             if (out != null) {
-                out.println(inputField.getText());
+                String in=inputField.getText();
+                out.println(in);
+                String[] parts = in.split(",");
+                if (parts.length < 5) {
+                    SwingUtilities.invokeLater(() -> logArea.append("Chat: " + in + "\n"));
+                }
+                int x1 = Integer.parseInt(parts[0]);
+                int y1 = Integer.parseInt(parts[1]);
+                int x2 = Integer.parseInt(parts[2]);
+                int y2 = Integer.parseInt(parts[3]);
+                boolean isWhite = Boolean.parseBoolean(parts[4]);
+                boolean c=game.canMove(x1, y1, x2, y2, isWhite);
                 if (out.checkError()) {
                     logArea.append("System: Send failed, connection lost.\n");
                 } else {
-                    logArea.append("Me: " + inputField.getText() + "\n");
+                    if(!c){
+                        logArea.append("Invalid move\n");
+                    }else{
+                        game.Move(x1, y1, x2, y2, isWhite);
+                        logArea.append("Me: " + inputField.getText() + "\n");
+                    }
                 }
                 inputField.setText("");
             }
