@@ -36,17 +36,27 @@ public class Game {
     }
 
 
-    public boolean canMove(int x1, int y1, int x2, int y2, boolean isWhite){
-        Piece piece = board[x1][y1];
-        if(piece == null) return false;
-        Piece target = board[x2][y2];
-        if(piece.checkRule(x2, y2, board)){
-            if(target == null || target.isWhite != piece.isWhite){
-                if(isWhite == piece.isWhite){
-                    return true;
-                }
-            } 
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
+    	
+    	if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
+        	return false;
         }
+    	
+    	Piece piece = board[fromRow][fromCol];
+        
+        if(piece == null) {
+        	return false;
+        }
+
+        Piece target = board[toRow][toCol];
+        if(target == null || target.isWhite != piece.isWhite) {
+        	if(isWhite == piece.isWhite){
+        		if(piece.checkRule(toRow, toCol, board)){
+        			return true;
+        		}
+        	}
+        }
+        
         return false;
     }
 

@@ -6,16 +6,12 @@ public class Rook extends Piece {
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         //Check if the move is valid
-        if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
-        	return false;
-        }
 
-    	if(toRow != row && toCol != col) {
+        if(toRow == row && toCol == col) {
         	return false;
         }
         
-        //Check if the potential target is the opposite color
-        if(board[toRow][toCol] != null && board[toRow][toCol].isWhite == isWhite) {
+    	if(toRow != row && toCol != col) {
         	return false;
         }
     	
