@@ -1,11 +1,12 @@
 public abstract class Piece {
     int row, col;
-    boolean isWhite;
+    boolean isWhite,moved;
 
     public Piece(int row, int col, boolean isWhite) {
         this.row = row;
         this.col = col;
         this.isWhite = isWhite;
+        this.moved=false;
     }
 
     // Every subclass MUST implement this
