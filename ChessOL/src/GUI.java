@@ -15,8 +15,8 @@ public class GUI extends JFrame {
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        //menu
-        JPanel menu = new JPanel(null);
+        //menu — replaced plain panel with chess board home screen
+        JPanel menu = new ChessBoardMenuPanel();
         JButton btnServer = new JButton("Server");
         btnServer.setBounds(50, 50, 150, 40);
         JButton btnClient = new JButton("Client");
@@ -119,4 +119,40 @@ public class GUI extends JFrame {
     }
 
     public static void main(String[] args) { new GUI(); }
+
+
+    // ── Inner class: paints a chess board as the menu background ─────────────
+    // Only change to the menu: JPanel menu = new ChessBoardMenuPanel()
+    // Everything else (btnServer, btnClient, bounds, listeners) is untouched
+    private static class ChessBoardMenuPanel extends JPanel {
+
+        private static final Color LIGHT  = new Color(240, 217, 181); // cream
+        private static final Color DARK   = new Color(181, 136,  99); // brown
+
+        ChessBoardMenuPanel() {
+            setLayout(null); // null layout preserved — setBounds() on buttons still works
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w  = getWidth();
+            int h  = getHeight();
+            int sq = Math.min(w, h) / 8;
+
+            // Draw 8x8 chess squares across the whole panel
+            for (int row = 0; row < 8; row++) {
+                for (int col = 0; col < 8; col++) {
+                    g2.setColor((row + col) % 2 == 0 ? LIGHT : DARK);
+                    g2.fillRect(col * sq, row * sq, sq, sq);
+                }
+            }
+
+            
+        }
+    }
 }
