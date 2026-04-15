@@ -39,7 +39,6 @@ public class GUI extends JFrame {
         inputField.addActionListener(e -> {
             if (out != null) {
                 String in=inputField.getText();
-                out.println(in);
                 String[] parts = in.split(",");
                 if (parts.length < 5) {
                     SwingUtilities.invokeLater(() -> logArea.append("Chat: " + in + "\n"));
@@ -57,7 +56,8 @@ public class GUI extends JFrame {
                         logArea.append("Invalid move\n");
                     }else{
                         game.Move(x1, y1, x2, y2, isWhite);
-                        logArea.append("Me: " + inputField.getText() + "\n");
+                        out.println(in);
+                        logArea.append(in+ "\n");
                     }
                 }
                 inputField.setText("");
@@ -104,13 +104,8 @@ public class GUI extends JFrame {
                         int x2 = Integer.parseInt(parts[2]);
                         int y2 = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
-                        boolean c=game.canMove(x1, y1, x2, y2, isWhite);
-                        if(c){
-                            SwingUtilities.invokeLater(() -> logArea.append("True"+ "\n"));
-                            game.Move(x1, y1, x2, y2, isWhite);
-                        }else{
-                            SwingUtilities.invokeLater(() -> logArea.append("False"+ "\n"));
-                        }
+                        SwingUtilities.invokeLater(() -> logArea.append("Moved:"+msg+ "\n"));
+                        game.Move(x1, y1, x2, y2, isWhite);
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
