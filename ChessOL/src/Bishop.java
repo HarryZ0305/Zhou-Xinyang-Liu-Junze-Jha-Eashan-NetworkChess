@@ -8,6 +8,7 @@ public class Bishop extends Piece {
         
         if(toRow == row || toCol == col) {
         	return false;
+        	
         }
         
         if(Math.abs(toRow - row) != Math.abs(toCol - col)) {
