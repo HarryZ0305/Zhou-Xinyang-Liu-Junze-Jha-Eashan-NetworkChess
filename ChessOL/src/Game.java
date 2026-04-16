@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Game {
     Piece[][] board;
     Player whitePlayer, blackPlayer;
@@ -36,7 +38,7 @@ public class Game {
     }
 
 
-    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhiteTurn){
     	
     	if(toRow == fromRow && toCol == fromCol) {
         	return false;
@@ -54,8 +56,16 @@ public class Game {
 
         Piece target = board[toRow][toCol];
         if(target == null || target.isWhite != piece.isWhite) {
-        	if(isWhite == piece.isWhite){
+        	if(isWhiteTurn == piece.isWhite){
         		if(piece.checkRule(toRow, toCol, board)){
+                    if(piece instanceof King){
+                        int step = toCol > fromCol ? 1 : -1;
+                        for(int c = fromCol; c != toCol - step; c += step){
+                            if(isInCheck(fromRow, c, isWhiteTurn)){
+                                return false;
+                            }
+                        }
+                    }
         			return true;
         		}
         	}
@@ -65,6 +75,15 @@ public class Game {
     }
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
+        if(Math.abs(y2-y1)==2&&board[x1][y1] instanceof King){
+            int rookCol = y2 > y1 ? 7 : 0;
+            int newRookCol = y2 > y1 ? y2 - 1 : y2 + 1;
+            board[x1][newRookCol] = board[x1][rookCol];
+            board[x1][rookCol] = null;
+            board[x1][newRookCol].col = newRookCol;
+            board[x1][newRookCol].moved = true;
+        }
+
         if(board[x2][y2] != null){
             capture(x1, y1, x2, y2, isWhite);
         }
@@ -72,6 +91,7 @@ public class Game {
         board[x1][y1] = null;
         board[x2][y2].row = x2;
         board[x2][y2].col = y2;
+        board[x2][y2].moved = true;
     }
 
     public Piece capture(int x1, int y1, int x2, int y2, boolean isWhite){
@@ -82,6 +102,20 @@ public class Game {
             whitePlayer.pieces.remove(captured);
         }
         return captured;
+    }
+
+    public boolean isInCheck(int x,int y,boolean isWhite){
+        ArrayList<Piece> player=isWhite?whitePlayer.pieces:blackPlayer.pieces;
+        for(Piece p:player){
+            if(p.checkRule(x, y, board)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void castling(){
+        
     }
 
     public static void main(String[] args) {
