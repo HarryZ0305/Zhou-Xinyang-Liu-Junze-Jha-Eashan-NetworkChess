@@ -56,7 +56,7 @@ public class Game {
         		if(piece.checkRule(toRow, toCol, board)){
                     if(piece instanceof King){
                         int step = toCol > fromCol ? 1 : -1;
-                        for(int c = fromCol; c != toCol + step; c += step){
+                        for(int c = fromCol; c != toCol - step; c += step){
                             if(isInCheck(fromRow, c, isWhiteTurn)){
                                 return false;
                             }
@@ -72,7 +72,12 @@ public class Game {
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
         if(Math.abs(y2-y1)==2&&board[x1][y1] instanceof King){
-            castling();
+            int rookCol = y2 > y1 ? 7 : 0;
+            int newRookCol = y2 > y1 ? y2 - 1 : y2 + 1;
+            board[x1][newRookCol] = board[x1][rookCol];
+            board[x1][rookCol] = null;
+            board[x1][newRookCol].col = newRookCol;
+            board[x1][newRookCol].moved = true;
         }
 
         if(board[x2][y2] != null){
@@ -106,7 +111,7 @@ public class Game {
     }
 
     public void castling(){
-
+        
     }
 
     public static void main(String[] args) {
