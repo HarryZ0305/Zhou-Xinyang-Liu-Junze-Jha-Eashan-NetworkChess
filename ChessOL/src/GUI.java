@@ -2,74 +2,46 @@ import javax.swing.*;
 import java.awt.*;
 import java.net.*;
 import java.io.*;
-
 public class GUI extends JFrame {
     private JPanel cards = new JPanel(new CardLayout());
     private JTextArea logArea = new JTextArea();
     private JTextField inputField = new JTextField();
     private PrintWriter out;
-    Game game=new Game();
-
+    Game game;
     public GUI() {
         setTitle("Network Skeleton");
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-        //menu — replaced plain panel with chess board home screen
+        //menu — now uses ChessBoardMenuPanel for the home screen background
         JPanel menu = new ChessBoardMenuPanel();
         JButton btnServer = new JButton("Server");
         btnServer.setBounds(50, 50, 150, 40);
         JButton btnClient = new JButton("Client");
         btnClient.setBounds(250, 50, 150, 40);
-
         btnServer.addActionListener(e -> startNetwork(true, null));
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
         menu.add(btnServer); menu.add(btnClient);
-
         //board
         JPanel workPanel = new JPanel(new BorderLayout());
         logArea.setEditable(false);
         workPanel.add(new JScrollPane(logArea), BorderLayout.CENTER);
         workPanel.add(inputField, BorderLayout.SOUTH);
-
         //send
         inputField.addActionListener(e -> {
             if (out != null) {
-                String in=inputField.getText();
-                String[] parts = in.split(",");
-                if (parts.length < 5) {
-                    SwingUtilities.invokeLater(() -> logArea.append("Chat: " + in + "\n"));
-                }
-                int x1 = Integer.parseInt(parts[0]);
-                int y1 = Integer.parseInt(parts[1]);
-                int x2 = Integer.parseInt(parts[2]);
-                int y2 = Integer.parseInt(parts[3]);
-                boolean isWhite = Boolean.parseBoolean(parts[4]);
-                boolean c=game.canMove(x1, y1, x2, y2, isWhite);
-                if (out.checkError()) {
-                    logArea.append("System: Send failed, connection lost.\n");
-                } else {
-                    if(!c){
-                        logArea.append("Invalid move\n");
-                    }else{
-                        game.Move(x1, y1, x2, y2, isWhite);
-                        out.println(in);
-                        logArea.append(in+ "\n");
-                    }
-                }
+                out.println(inputField.getText());
+                logArea.append("Me: " + inputField.getText() + "\n");
                 inputField.setText("");
             }
         });
-
         cards.add(menu, "MENU");
         cards.add(workPanel, "WORK");
         add(cards);
         setVisible(true);
     }
-
     private void startNetwork(boolean isServer, String ip) {
         //switch page
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
@@ -77,60 +49,40 @@ public class GUI extends JFrame {
             try {
                 Socket s;
                 if (isServer) {
-                    logArea.append("Waiting for client on 443...\n");
-                    try (ServerSocket ss = new ServerSocket(443)) { s = ss.accept(); }
+                    logArea.append("Waiting for client on 8888...\n");
+                    s = new ServerSocket(8888).accept();
                 } else {
                     logArea.append("Connecting to " + ip + "...\n");
-                    s = new Socket(ip, 443);
+                    s = new Socket(ip, 8888);
                 }
-                
-                s.setKeepAlive(true);
                 out = new PrintWriter(s.getOutputStream(), true);
                 logArea.append("System: Connected!\n");
-
                 //recive
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
                     String msg = line;
                     String[] parts = msg.split(",");
-                    if (parts.length < 5) {
-                        SwingUtilities.invokeLater(() -> logArea.append("Chat: " + msg + "\n"));
-                        continue;
-                    }
-                    try {
-                        int x1 = Integer.parseInt(parts[0]);
-                        int y1 = Integer.parseInt(parts[1]);
-                        int x2 = Integer.parseInt(parts[2]);
-                        int y2 = Integer.parseInt(parts[3]);
-                        boolean isWhite = Boolean.parseBoolean(parts[4]);
-                        SwingUtilities.invokeLater(() -> logArea.append("Moved:"+msg+ "\n"));
-                        game.Move(x1, y1, x2, y2, isWhite);
-                    } catch (Exception ex) {
-                        SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
-                    }
+                    SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + parts[0] + "\n"));
                 }
-                SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getClass().getSimpleName() + ": " + e.getMessage() + "\n"));
-                e.printStackTrace();
+                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
             }
         }).start();
     }
+    public static void main(String[] args) { new GUI(); 
+    }
 
-    public static void main(String[] args) { new GUI(); }
-
-
-    // ── Inner class: paints a chess board as the menu background ─────────────
-    // Only change to the menu: JPanel menu = new ChessBoardMenuPanel()
-    // Everything else (btnServer, btnClient, bounds, listeners) is untouched
+    // ── Home screen: chess board drawn as background behind the buttons ───────
+    // Only change to the menu block above is: new JPanel(null) → new ChessBoardMenuPanel()
+    // null layout is kept inside so setBounds() on btnServer/btnClient still works
     private static class ChessBoardMenuPanel extends JPanel {
 
-        private static final Color LIGHT  = new Color(240, 217, 181); // cream
-        private static final Color DARK   = new Color(181, 136,  99); // brown
+        private static final Color LIGHT = new Color(240, 217, 181); // cream squares
+        private static final Color DARK  = new Color(181, 136,  99); // brown squares
 
         ChessBoardMenuPanel() {
-            setLayout(null); // null layout preserved — setBounds() on buttons still works
+            setLayout(null); // preserves null layout — button .setBounds() unchanged
         }
 
         @Override
@@ -142,9 +94,9 @@ public class GUI extends JFrame {
 
             int w  = getWidth();
             int h  = getHeight();
-            int sq = Math.min(w, h) / 8;
+            int sq = Math.min(w, h) / 8; // square size — 1/8th of shorter dimension
 
-            // Draw 8x8 chess squares across the whole panel
+            // 8x8 board squares filling the whole panel
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
                     g2.setColor((row + col) % 2 == 0 ? LIGHT : DARK);
@@ -152,7 +104,23 @@ public class GUI extends JFrame {
                 }
             }
 
-            
+            // Semi-transparent overlay so buttons + text are readable on top
+            g2.setColor(new Color(0, 0, 0, 140));
+            g2.fillRect(0, 0, w, h);
+
+            // Game title
+            g2.setFont(new Font("Serif", Font.BOLD, 38));
+            g2.setColor(new Color(240, 210, 150));
+            String title = "ChessOL";
+            FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(title, w / 2 - fm.stringWidth(title) / 2, h / 2 - 15);
+
+            // Subtitle
+            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
+            g2.setColor(new Color(200, 185, 155));
+            String sub = "Select Server or Client to begin";
+            FontMetrics fm2 = g2.getFontMetrics();
+            g2.drawString(sub, w / 2 - fm2.stringWidth(sub) / 2, h / 2 + 12);
         }
     }
 }
