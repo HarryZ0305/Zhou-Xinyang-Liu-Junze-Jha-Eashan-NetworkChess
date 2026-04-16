@@ -38,6 +38,10 @@ public class Game {
 
     public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
     	
+    	if(toRow == fromRow && toCol == fromCol) {
+        	return false;
+        }
+    	
     	if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
         	return false;
         }

@@ -5,11 +5,6 @@ public class Rook extends Piece {
 
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
-        //Check if the move is valid
-
-        if(toRow == row && toCol == col) {
-        	return false;
-        }
         
     	if(toRow != row && toCol != col) {
         	return false;
