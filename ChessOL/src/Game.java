@@ -29,7 +29,7 @@ public class Game {
 
         whitePlayer = new Player("White", true);
         blackPlayer = new Player("Black", false);
-        for(int i=0; i<8; i++){
+        for(int i = 0; i < 8; i++){
             whitePlayer.pieces.add(board[6][i]);
             blackPlayer.pieces.add(board[1][i]);
         }
@@ -75,7 +75,7 @@ public class Game {
     }
 
     public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
-        if(Math.abs(y2-y1)==2&&board[x1][y1] instanceof King){
+        if(Math.abs(y2 - y1) == 2 && board[x1][y1] instanceof King){
             int rookCol = y2 > y1 ? 7 : 0;
             int newRookCol = y2 > y1 ? y2 - 1 : y2 + 1;
             board[x1][newRookCol] = board[x1][rookCol];
@@ -106,7 +106,7 @@ public class Game {
 
     public boolean isInCheck(int x,int y,boolean isWhite){
         ArrayList<Piece> player=isWhite?whitePlayer.pieces:blackPlayer.pieces;
-        for(Piece p:player){
+        for(Piece p : player){
             if(p.checkRule(x, y, board)){
                 return true;
             }
