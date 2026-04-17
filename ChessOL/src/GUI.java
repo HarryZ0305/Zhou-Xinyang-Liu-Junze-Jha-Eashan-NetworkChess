@@ -55,9 +55,25 @@ public class GUI extends JFrame {
                     if(!c){
                         logArea.append("Invalid move\n");
                     }else{
+                        String msg = in;
+                        if((x2==0&&isWhite)||(x2==7&&!isWhite)){
+                            String prompt = "Promote to (Q/R/B/N):";
+                            String promo;
+                            while (true) {
+                                promo = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
+                                if (promo == null) { prompt = "Invalid piece type. Promote to (Q/R/B/N):"; continue; }
+                                promo = promo.trim().toUpperCase();
+                                if (promo.equals("Q") || promo.equals("R") || promo.equals("B") || promo.equals("N")) break;
+                                prompt = "Invalid piece type. Promote to (Q/R/B/N):";
+                            }
+                            msg += "," + promo;
+                            game.promotion(x1, y1, isWhite,promo);
+                        }else{
+                            msg += ",None";
+                        }
                         game.Move(x1, y1, x2, y2, isWhite);
-                        out.println(in);
-                        logArea.append(in+ "\n");
+                        out.println(msg);
+                        logArea.append(msg + "\n");
                     }
                 }
                 inputField.setText("");
@@ -104,7 +120,12 @@ public class GUI extends JFrame {
                         int x2 = Integer.parseInt(parts[2]);
                         int y2 = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
+                        String promo =parts[5];
                         SwingUtilities.invokeLater(() -> logArea.append("Moved:"+msg+ "\n"));
+                        if(!promo.equals("None")){
+                            // Handle promotion if needed (not implemented in this snippet)
+                            game.promotion(x1, y1, isWhite,promo);
+                        }
                         game.Move(x1, y1, x2, y2, isWhite);
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));

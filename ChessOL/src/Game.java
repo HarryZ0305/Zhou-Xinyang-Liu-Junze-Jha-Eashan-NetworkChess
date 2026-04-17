@@ -114,8 +114,21 @@ public class Game {
         return false;
     }
 
-    public void castling(){
-        
+    public void promotion(int x, int y, boolean isWhite,String promo){
+        switch(promo){
+            case "Q":
+                board[x][y] = new Queen(x, y, isWhite);
+                break;
+            case "R":
+                board[x][y] = new Rook(x, y, isWhite);
+                break;
+            case "B":
+                board[x][y] = new Bishop(x, y, isWhite);
+                break;
+            case "N":
+                board[x][y] = new Knight(x, y, isWhite);
+                break;
+        }
     }
 
     public static void main(String[] args) {
