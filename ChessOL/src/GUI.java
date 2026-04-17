@@ -8,7 +8,7 @@ public class GUI extends JFrame {
     private JTextArea logArea = new JTextArea();
     private JTextField inputField = new JTextField();
     private PrintWriter out;
-    Game game;
+    Game game = new Game();
     
     public GUI() {
         setTitle("Network Skeleton");
@@ -52,9 +52,9 @@ public class GUI extends JFrame {
                         logArea.append("Invalid move\n");
                     }else{
                         String msg = in;
+                        String promo = "None";
                         if((x2==0&&isWhite)||(x2==7&&!isWhite)){
                             String prompt = "Promote to (Q/R/B/N):";
-                            String promo;
                             while (true) {
                                 promo = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
                                 if (promo == null) { prompt = "Invalid piece type. Promote to (Q/R/B/N):"; continue; }
@@ -63,11 +63,13 @@ public class GUI extends JFrame {
                                 prompt = "Invalid piece type. Promote to (Q/R/B/N):";
                             }
                             msg += "," + promo;
-                            game.promotion(x1, y1, isWhite,promo);
                         }else{
                             msg += ",None";
                         }
                         game.Move(x1, y1, x2, y2, isWhite);
+                        if(!promo.equals("None")){
+                            game.promotion(x2, y2, isWhite, promo);
+                        }
                         out.println(msg);
                         logArea.append(msg + "\n");
                     }
