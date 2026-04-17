@@ -74,24 +74,33 @@ public class Game {
         return false;
     }
 
-    public void Move(int x1, int y1, int x2, int y2, boolean isWhite){
-        if(Math.abs(y2 - y1) == 2 && board[x1][y1] instanceof King){
-            int rookCol = y2 > y1 ? 7 : 0;
-            int newRookCol = y2 > y1 ? y2 - 1 : y2 + 1;
-            board[x1][newRookCol] = board[x1][rookCol];
-            board[x1][rookCol] = null;
-            board[x1][newRookCol].col = newRookCol;
-            board[x1][newRookCol].moved = true;
+    public void Move(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
+        if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
+            int rookCol = toCol > fromCol ? 7 : 0;
+            int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
+            board[fromRow][newRookCol] = board[fromRow][rookCol];
+            board[fromRow][rookCol] = null;
+            board[fromRow][newRookCol].col = newRookCol;
+            board[fromRow][newRookCol].moved = true;
+        }
+        
+        if(board[fromRow][fromCol] instanceof Pawn) {
+        	if(fromRow != toRow && fromCol != toCol) {
+        		capture(fromRow, fromCol, toRow, toCol, isWhite);
+        	}
         }
 
-        if(board[x2][y2] != null){
-            capture(x1, y1, x2, y2, isWhite);
+        if(board[toRow][toCol] != null){
+            capture(fromRow, fromCol, toRow, toCol, isWhite);
         }
-        board[x2][y2] = board[x1][y1];
-        board[x1][y1] = null;
-        board[x2][y2].row = x2;
-        board[x2][y2].col = y2;
-        board[x2][y2].moved = true;
+        
+        
+        
+        board[toRow][toCol] = board[fromRow][fromCol];
+        board[fromRow][fromCol] = null;
+        board[toRow][toCol].row = toRow;
+        board[toRow][toCol].col = toCol;
+        board[toRow][toCol].moved = true;
     }
 
     public Piece capture(int x1, int y1, int x2, int y2, boolean isWhite){
