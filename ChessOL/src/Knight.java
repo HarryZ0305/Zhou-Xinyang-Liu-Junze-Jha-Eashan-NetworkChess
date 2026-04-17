@@ -5,8 +5,10 @@ public class Knight extends Piece {
 
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
-        int dr = Math.abs(toRow - row);
-        int dc = Math.abs(toCol - col);
-        return (dr == 2 && dc == 1) || (dr == 1 && dc == 2);
+        
+    	int rDir = Math.abs(toRow - row);
+        int cDir = Math.abs(toCol - col);
+        
+        return (rDir == 2 && cDir == 1) || (rDir == 1 && cDir == 2);
     }
 }
