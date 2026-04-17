@@ -3,11 +3,13 @@ import java.awt.*;
 import java.net.*;
 import java.io.*;
 public class GUI extends JFrame {
-    private JPanel cards = new JPanel(new CardLayout());
+    
+	private JPanel cards = new JPanel(new CardLayout());
     private JTextArea logArea = new JTextArea();
     private JTextField inputField = new JTextField();
     private PrintWriter out;
     Game game;
+    
     public GUI() {
         setTitle("Network Skeleton");
         setSize(500, 400);

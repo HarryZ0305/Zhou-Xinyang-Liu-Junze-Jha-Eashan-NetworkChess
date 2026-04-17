@@ -6,7 +6,7 @@ public abstract class Piece {
         this.row = row;
         this.col = col;
         this.isWhite = isWhite;
-        this.moved=false;
+        this.moved = false;
     }
 
     // Every subclass MUST implement this
