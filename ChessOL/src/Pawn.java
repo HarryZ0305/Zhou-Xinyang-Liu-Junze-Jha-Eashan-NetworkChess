@@ -6,33 +6,38 @@ public class Pawn extends Piece {
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         
+    	int direction = isWhite ? -1 : 1; // white moves up, black moves down
+    	
+    	//Moving straight
     	if(col == toCol) {
-    		int direction = isWhite ? -1 : 1; // white moves up, black moves down
-            if(!moved) {
-            	if(Math.abs(toRow - row) == 2) {
-            		direction *= 2;
-            	}
-            	moved = true;
+            
+    		if(toRow == row + direction) {
+            	return board[toRow][toCol] == null;
             }
-            return toCol == col && toRow == row + direction;
-    	}
-    	
-    	if(Math.abs(toCol - col) > 1 || Math.abs(toRow - row) > 1) {
+    		
+    		//First move can move 2 squares
+    		if(!moved && toRow == row + direction * 2) {
+    			return board[row + direction][toCol] == null && board[toRow][toCol] == null;
+    		}
+    		
     		return false;
     	}
     	
-    	int direction = isWhite ? -1 : 1;
-    	
-    	if(board[row + direction][toCol] == null) {
-    		return false;
-    	}
-    	
-    	if(board[row + direction][toCol].isWhite != isWhite) {
-    		moved = true;
-    		return true;
-    	}
-    	
-    	return false;
+    	//Moving diagonal to capture
+        if(Math.abs(toCol - col) == 1 && toRow == row + direction) {
+            
+        	Piece target = board[toRow][toCol];
+            
+        	if (target != null && target.isWhite != this.isWhite) {
+                return true;
+            }
+            
+            //En Passant
+            Piece targetTwo = board[row][toCol];
+            
+        }
+
+        return false;
         
     }
 }
