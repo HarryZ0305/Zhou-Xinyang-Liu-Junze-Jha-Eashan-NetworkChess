@@ -70,8 +70,13 @@ public class GUI extends JFrame {
                         if(!promo.equals("None")){
                             game.promotion(x2, y2, isWhite, promo);
                         }
+                        King king = game.getKing(!isWhite);
+                        if(game.isInCheck(king.row, king.col, !isWhite)){
+                            logArea.append("Check!\n");
+                        }
                         out.println(msg);
                         logArea.append(msg + "\n");
+                        game.whiteTurn=!game.whiteTurn;
                     }
                 }
                 inputField.setText("");

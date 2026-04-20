@@ -38,8 +38,12 @@ public class Game {
     }
 
 
-    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhiteTurn){
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
     	
+        if(isWhite != whiteTurn) {
+            return false;
+        }
+
     	if(toRow == fromRow && toCol == fromCol) {
         	return false;
         }
@@ -56,12 +60,12 @@ public class Game {
 
         Piece target = board[toRow][toCol];
         if(target == null || target.isWhite != piece.isWhite) {
-        	if(isWhiteTurn == piece.isWhite){
+        	if(isWhite == piece.isWhite){
         		if(piece.checkRule(toRow, toCol, board)){
                     if(piece instanceof King){
                         int step = toCol > fromCol ? 1 : -1;
                         for(int c = fromCol; c != toCol - step; c += step){
-                            if(isInCheck(fromRow, c, isWhiteTurn)){
+                            if(isInCheck(fromRow, c, isWhite)){
                                 return false;
                             }
                         }
@@ -138,6 +142,17 @@ public class Game {
                 board[x][y] = new Knight(x, y, isWhite);
                 break;
         }
+    }
+
+    public King getKing(boolean isWhite){
+        ArrayList<Piece> playerPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
+        King king=null;
+        for(int i = 0; i < playerPieces.size(); i++){
+            if(playerPieces.get(i) instanceof King){
+                king=(King)playerPieces.get(i);
+            }
+        }
+        return king;
     }
 
     public static void main(String[] args) {
