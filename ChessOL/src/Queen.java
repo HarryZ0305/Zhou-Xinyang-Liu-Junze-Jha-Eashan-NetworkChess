@@ -30,7 +30,7 @@ public class Queen extends Piece {
             		cCheck += cDir;
             }
                 	
-        		return true;
+        		return true; 
         }
         	
         if(diagonal) {
