@@ -7,11 +7,11 @@ public class Bishop extends Piece {
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         
         if(toRow == row || toCol == col) {
-        	return false;
+        		return false;
         }
         
         if(Math.abs(toRow - row) != Math.abs(toCol - col)) {
-        	return false;
+        		return false;
         }
         
         int rDir = Integer.compare(toRow, row);
@@ -21,16 +21,15 @@ public class Bishop extends Piece {
         int cCheck = col + cDir;
         
         while(rCheck != toRow || cCheck != toCol) {
-        	if(board[rCheck][cCheck] != null) {
-        		return false; //Another piece in its path
-        	}
-        	//Move again
-        	rCheck += rDir;
-        	cCheck += cDir;
+        		if(board[rCheck][cCheck] != null) {
+        			return false; //Another piece in its path
+        		}
+        		
+        		//Move again
+        		rCheck += rDir;
+        		cCheck += cDir;
         }
         
         return true;
-        
-        
     }
 }
