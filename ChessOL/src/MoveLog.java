@@ -48,3 +48,4 @@ public class MoveLog extends JPanel {
         add(buildScroll(), BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
     }
+}
