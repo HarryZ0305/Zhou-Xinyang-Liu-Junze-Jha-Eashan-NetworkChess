@@ -144,12 +144,12 @@ public class Game {
         }
     }
 
-    public King getKing(boolean isWhite){
+    public Piece getKing(boolean isWhite){
         ArrayList<Piece> playerPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
-        King king=null;
+        Piece king=null;
         for(int i = 0; i < playerPieces.size(); i++){
-            if(playerPieces.get(i) instanceof King){
-                king=(King)playerPieces.get(i);
+            if(playerPieces.get(i).getType().equals("King")){
+                king=playerPieces.get(i);
             }
         }
         return king;
