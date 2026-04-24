@@ -70,7 +70,7 @@ public class GUI extends JFrame {
                         if(!promo.equals("None")){
                             game.promotion(x2, y2, isWhite, promo);
                         }
-                        King king = game.getKing(!isWhite);
+                        Piece king = game.getKing(!isWhite);
                         if(game.isInCheck(king.row, king.col, !isWhite)){
                             logArea.append("Check!\n");
                         }
