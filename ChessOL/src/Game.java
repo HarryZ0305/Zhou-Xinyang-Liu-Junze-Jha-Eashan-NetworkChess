@@ -64,7 +64,7 @@ public class Game {
         		if(piece.checkRule(toRow, toCol, board)){
                     if(piece instanceof King){
                         int step = toCol > fromCol ? 1 : -1;
-                        for(int c = fromCol; c != toCol - step; c += step){
+                        for(int c = fromCol; c != toCol; c += step){
                             if(isInCheck(fromRow, c, isWhite)){
                                 return false;
                             }

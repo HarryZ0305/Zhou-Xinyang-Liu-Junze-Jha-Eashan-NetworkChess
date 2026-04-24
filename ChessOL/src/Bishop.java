@@ -21,6 +21,7 @@ public class Bishop extends Piece {
         int cCheck = col + cDir;
         
         while(rCheck != toRow || cCheck != toCol) {
+        		
         		if(board[rCheck][cCheck] != null) {
         			return false; //Another piece in its path
         		}

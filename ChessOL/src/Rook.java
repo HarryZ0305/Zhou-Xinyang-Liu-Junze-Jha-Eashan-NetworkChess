@@ -6,9 +6,9 @@ public class Rook extends Piece {
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
         
-    	if(toRow != row && toCol != col) {
-        	return false;
-        }
+    		if(toRow != row && toCol != col) {
+    			return false;
+    		}
     	
         //One of them will be 0
         int rDir = Integer.compare(toRow, row);
@@ -19,14 +19,15 @@ public class Rook extends Piece {
         int cCheck = col + cDir;
         
         while(rCheck != toRow || cCheck != toCol) {
+        		
         	if(board[rCheck][cCheck] != null) {
-        		return false; //Another piece in its path
-        	}
-        	//Move again
-        	rCheck += rDir;
-        	cCheck += cDir;
+        			return false; //Another piece in its path
+        		}
+        		//Move again
+        		rCheck += rDir;
+        		cCheck += cDir;
         }
             	
-    	return true;
+    		return true;
     }
 }
