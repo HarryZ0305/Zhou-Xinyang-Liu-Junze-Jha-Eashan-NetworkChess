@@ -32,6 +32,8 @@ public class Game {
         for(int i = 0; i < 8; i++){
             whitePlayer.pieces.add(board[6][i]);
             blackPlayer.pieces.add(board[1][i]);
+            whitePlayer.pieces.add(board[7][i]);
+            blackPlayer.pieces.add(board[0][i]);
         }
 
         whiteTurn = true;//can change to random
