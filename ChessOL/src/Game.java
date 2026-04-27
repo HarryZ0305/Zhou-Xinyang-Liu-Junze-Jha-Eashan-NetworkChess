@@ -120,7 +120,7 @@ public class Game {
     }
 
     public boolean isInCheck(int x,int y,boolean isWhite){
-        ArrayList<Piece> player=isWhite?whitePlayer.pieces:blackPlayer.pieces;
+        ArrayList<Piece> player=!isWhite?whitePlayer.pieces:blackPlayer.pieces;
         for(Piece p : player){
             if(p.checkRule(x, y, board)){
                 return true;
