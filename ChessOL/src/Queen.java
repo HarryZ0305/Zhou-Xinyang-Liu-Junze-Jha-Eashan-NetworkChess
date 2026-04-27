@@ -11,6 +11,7 @@ public class Queen extends Piece {
         boolean vertical = toCol == col;
         boolean diagonal = Math.abs(toRow - row) == Math.abs(toCol - col);
         
+        //Rook logic
         if(horizontal || vertical) {
         		//One of them will be 0
             int rDir = Integer.compare(toRow, row);
@@ -33,6 +34,7 @@ public class Queen extends Piece {
         		return true; 
         }
         	
+        //Bishop logic
         if(diagonal) {
         		int rDir = Integer.compare(toRow, row);
             int cDir = Integer.compare(toCol, col);
