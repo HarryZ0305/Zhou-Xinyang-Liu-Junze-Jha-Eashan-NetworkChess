@@ -44,7 +44,7 @@ public class GUI extends JFrame {
                 int x2 = Integer.parseInt(parts[2]);
                 int y2 = Integer.parseInt(parts[3]);
                 boolean isWhite = Boolean.parseBoolean(parts[4]);
-                boolean c=game.canMove(x1, y1, x2, y2, isWhite);
+                boolean c=game.canMove(x1, y1, x2, y2, isWhite,false);
                 if (out.checkError()) {
                     logArea.append("System: Send failed, connection lost.\n");
                 } else {
@@ -73,6 +73,9 @@ public class GUI extends JFrame {
                         Piece king = game.getKing(!isWhite);
                         if(game.isInCheck(king.row, king.col, !isWhite)){
                             logArea.append("Check!\n");
+                            msg+=",true";
+                        }else{
+                            msg+=",false";
                         }
                         out.println(msg);
                         logArea.append(msg + "\n");
@@ -119,12 +122,19 @@ public class GUI extends JFrame {
                         int y2 = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
                         String promo =parts[5];
+                        boolean isCheck = Boolean.parseBoolean(parts[6]);
                         SwingUtilities.invokeLater(() -> logArea.append("Moved:"+msg+ "\n"));
                         if(!promo.equals("None")){
                             // Handle promotion if needed (not implemented in this snippet)
                             game.promotion(x1, y1, isWhite,promo);
                         }
+                        if(isCheck){
+                            SwingUtilities.invokeLater(() -> logArea.append("In Check!"+"\n"));
+                            Player player=isWhite?game.whitePlayer:game.blackPlayer;
+                            player.isInCheck=true;
+                        }
                         game.Move(x1, y1, x2, y2, isWhite);
+                        game.whiteTurn=!game.whiteTurn;
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
