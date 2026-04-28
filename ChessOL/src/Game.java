@@ -112,7 +112,7 @@ public class Game {
     			}
     		} else if(board[toCol][toRow] != null) {
     			capture(fromRow, fromCol, toRow, toCol, isWhite);
-    		}
+    		} 
     		
         //Movement mapping
         board[toRow][toCol] = board[fromRow][fromCol];
