@@ -22,7 +22,7 @@ public class King extends Piece {
             			return true;
             		}
             }
-        }
+        } 
         return Math.abs(toRow - row) <= 1 && Math.abs(toCol - col) <= 1;
     }
 }
