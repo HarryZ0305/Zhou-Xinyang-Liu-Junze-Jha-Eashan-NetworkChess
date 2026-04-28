@@ -40,7 +40,7 @@ public class Game {
     }
 
 
-    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite,boolean isInCheck){
     	
         if(isWhite != whiteTurn) {
             return false;
