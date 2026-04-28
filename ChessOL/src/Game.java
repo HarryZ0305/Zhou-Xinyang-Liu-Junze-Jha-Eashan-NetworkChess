@@ -130,19 +130,28 @@ public class Game {
     }
 
     public void promotion(int x, int y, boolean isWhite,String promo){
-        
+        ArrayList<Piece> playerPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
+        for(Piece p:playerPieces){
+            if(p.row==x&&p.col==y){
+                playerPieces.remove(p);
+            }
+        }
         switch(promo){
             case "Q":
                 board[x][y] = new Queen(x, y, isWhite);
+                playerPieces.add(board[x][y]);
                 break;
             case "R":
                 board[x][y] = new Rook(x, y, isWhite);
+                playerPieces.add(board[x][y]);
                 break;
             case "B":
                 board[x][y] = new Bishop(x, y, isWhite);
+                playerPieces.add(board[x][y]);
                 break;
             case "N":
                 board[x][y] = new Knight(x, y, isWhite);
+                playerPieces.add(board[x][y]);
                 break;
         }
     }
