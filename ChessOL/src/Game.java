@@ -130,6 +130,7 @@ public class Game {
     }
 
     public void promotion(int x, int y, boolean isWhite,String promo){
+        
         switch(promo){
             case "Q":
                 board[x][y] = new Queen(x, y, isWhite);
