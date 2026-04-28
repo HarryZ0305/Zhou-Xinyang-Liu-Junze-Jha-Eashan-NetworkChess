@@ -5,27 +5,24 @@ public class King extends Piece {
 
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
-        if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
-        	return false;
-        }
-
-        if(!this.moved){
+    	
+    		if(!this.moved){
             //castling
-            if(toRow == row && Math.abs(toCol-col) == 2){
-            	int rookCol = toCol == col + 2 ? 7 : 0;
-            	Piece rook = board[row][rookCol];
-            	if(rook instanceof Rook && !rook.moved){
-            		//check if path is clear
-            		int step = toCol > col ? 1 : -1;
-            		for(int c = col + step; c != rookCol; c += step){
-            			if(board[row][c] != null){
-            				return false;
+            if(toRow == row && Math.abs(toCol - col) == 2){
+            		int rookCol = toCol == col + 2 ? 7 : 0;
+            		Piece rook = board[row][rookCol];
+            		if(rook instanceof Rook && !rook.moved){
+            			//check if path is clear
+            			int step = toCol > col ? 1 : -1;
+            			for(int c = col + step; c != rookCol; c += step){
+            				if(board[row][c] != null){
+            					return false;
+            				}
             			}
+            			return true;
             		}
-            		return true;
-            	}
             }
-        }
+        } 
         return Math.abs(toRow - row) <= 1 && Math.abs(toCol - col) <= 1;
     }
 }
