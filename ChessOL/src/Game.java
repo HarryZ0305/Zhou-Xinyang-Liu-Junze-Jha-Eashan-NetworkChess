@@ -60,10 +60,10 @@ public class Game {
         	return false;
         }
 
-        Piece target = board[toRow][toCol];
-        if(target == null || target.isWhite != piece.isWhite) {
-        	if(isWhite == piece.isWhite){
-        		if(piece.checkRule(toRow, toCol, board)){
+        	Piece target = board[toRow][toCol];
+        	if(target == null || target.isWhite != piece.isWhite) {
+        		if(isWhite == piece.isWhite){
+        			if(piece.checkRule(toRow, toCol, board)){
                     if(piece instanceof King){
                         int step = toCol > fromCol ? 1 : -1;
                         for(int c = fromCol; c != toCol; c += step){
@@ -73,15 +73,16 @@ public class Game {
                         }
                     }
         			return true;
+        			}
         		}
-        	}
         }
-        
         return false;
     }
 
     public void Move(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
-        if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
+        
+    		//Castling Logic
+    		if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
             int rookCol = toCol > fromCol ? 7 : 0;
             int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
             board[fromRow][newRookCol] = board[fromRow][rookCol];
@@ -90,18 +91,30 @@ public class Game {
             board[fromRow][newRookCol].moved = true;
         }
         
-        if(board[fromRow][fromCol] instanceof Pawn) {
-        	if(fromRow != toRow && fromCol != toCol) {
-        		capture(fromRow, fromCol, toRow, toCol, isWhite);
-        	}
-        }
-
-        if(board[toRow][toCol] != null){
-            capture(fromRow, fromCol, toRow, toCol, isWhite);
-        }
-        
-        
-        
+    		//En Passant
+    		ArrayList<Piece> playerPieces = isWhite? whitePlayer.pieces : blackPlayer.pieces;
+    		for(Piece p: playerPieces) {
+    			if(p instanceof Pawn) {
+    				((Pawn) p).firstMoveTwoSquares = false;
+    			}
+    		}
+    		
+    		if(board[fromRow][fromCol] instanceof Pawn && Math.abs(toRow - fromRow) == 2) {
+    			((Pawn) board[fromRow][fromCol]).firstMoveTwoSquares = true;
+    		}
+    		
+    		if(board[fromRow][fromCol] instanceof Pawn && fromCol != toCol) {
+    			if(board[toRow][toCol] == null) {
+    				capture(fromRow, fromCol, fromRow, toCol, isWhite); //capturing en passant
+    				board[fromRow][toCol] = null; //Removing the captured pawn
+    			}else {
+    				capture(fromRow, fromCol, toRow, toCol, isWhite); //Normal capture
+    			}
+    		} else if(board[toCol][toRow] != null) {
+    			capture(fromRow, fromCol, toRow, toCol, isWhite);
+    		} 
+    		
+        //Movement mapping
         board[toRow][toCol] = board[fromRow][fromCol];
         board[fromRow][fromCol] = null;
         board[toRow][toCol].row = toRow;
