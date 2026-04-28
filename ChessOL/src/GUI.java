@@ -44,7 +44,8 @@ public class GUI extends JFrame {
                 int x2 = Integer.parseInt(parts[2]);
                 int y2 = Integer.parseInt(parts[3]);
                 boolean isWhite = Boolean.parseBoolean(parts[4]);
-                boolean c=game.canMove(x1, y1, x2, y2, isWhite,false);
+                Player player=game.whiteTurn?game.whitePlayer:game.blackPlayer;
+                boolean c=game.canMove(x1, y1, x2, y2, isWhite,player.isInCheck);
                 if (out.checkError()) {
                     logArea.append("System: Send failed, connection lost.\n");
                 } else {
