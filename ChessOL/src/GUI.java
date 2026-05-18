@@ -2,6 +2,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.net.*;
 import java.io.*;
+import javax.imageio.ImageIO;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+
 public class GUI extends JFrame {
     
 	private JPanel cards = new JPanel(new CardLayout());
@@ -199,4 +204,20 @@ public class GUI extends JFrame {
             g2.drawString(sub, w / 2 - fm2.stringWidth(sub) / 2, h / 2 + 12);
         }
     }
+
+    private class ActiveBoardPanel extends JPanel {
+        private static final Color light = new Color(240, 217, 181);
+        private static final Color dark  = new Color(181, 136,  99);
+        private HashMap<String, Image> pieceImages = new HashMap<>();
+
+        public ActiveBoardPanel(){
+            loadImages();
+        }
+
+        private void loadImages(){
+            String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
+            String[] colors = {"White", "Black"};
+        }
+    }
 }
+
