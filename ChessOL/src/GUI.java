@@ -43,6 +43,7 @@ public class GUI extends JFrame {
                 String[] parts = in.split(",");
                 if (parts.length < 5) {
                     SwingUtilities.invokeLater(() -> logArea.append("Chat: " + in + "\n"));
+                    return;
                 }
                 int x1 = Integer.parseInt(parts[0]);
                 int y1 = Integer.parseInt(parts[1]);

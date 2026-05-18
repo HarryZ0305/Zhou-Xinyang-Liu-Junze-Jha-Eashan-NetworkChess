@@ -110,7 +110,7 @@ public class Game {
     			}else {
     				capture(fromRow, fromCol, toRow, toCol, isWhite); //Normal capture
     			}
-    		} else if(board[toCol][toRow] != null) {
+    		} else if(board[toRow][toCol] != null) {
     			capture(fromRow, fromCol, toRow, toCol, isWhite);
     		} 
     		
@@ -147,6 +147,7 @@ public class Game {
         for(Piece p:playerPieces){
             if(p.row==x&&p.col==y){
                 playerPieces.remove(p);
+                break;
             }
         }
         switch(promo){
