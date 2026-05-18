@@ -217,6 +217,18 @@ public class GUI extends JFrame {
         private void loadImages(){
             String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
             String[] colors = {"White", "Black"};
+
+            try{
+                for(String pieceColor: colors){
+                    for(String pieceType: pieces){
+                        String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
+                        Image imagePiece = ImageIO.read(new File(fileName));
+                        pieceImages.put(pieceColor + pieceType, imagePiece);
+                    }
+                }
+            } catch(IOException e){
+                System.out.println("Error loading images: " + e.getMessage());
+            }
         }
     }
 }
