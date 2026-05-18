@@ -80,9 +80,9 @@ public class Game {
     }
 
     public void Move(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
-        
-    		//Castling Logic
-    		if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
+
+    	//Castling Logic
+    	if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
             int rookCol = toCol > fromCol ? 7 : 0;
             int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
             board[fromRow][newRookCol] = board[fromRow][rookCol];
@@ -90,29 +90,29 @@ public class Game {
             board[fromRow][newRookCol].col = newRookCol;
             board[fromRow][newRookCol].moved = true;
         }
+    		
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                if (board[r][c] instanceof Pawn) {
+                    ((Pawn) board[r][c]).firstMoveTwoSquares = false;
+                }
+            }
+        }
         
-    		//En Passant
-    		ArrayList<Piece> playerPieces = isWhite? whitePlayer.pieces : blackPlayer.pieces;
-    		for(Piece p: playerPieces) {
-    			if(p instanceof Pawn) {
-    				((Pawn) p).firstMoveTwoSquares = false;
-    			}
-    		}
+    	if(board[fromRow][fromCol] instanceof Pawn && Math.abs(toRow - fromRow) == 2) {
+    		((Pawn) board[fromRow][fromCol]).firstMoveTwoSquares = true;
+    	}
     		
-    		if(board[fromRow][fromCol] instanceof Pawn && Math.abs(toRow - fromRow) == 2) {
-    			((Pawn) board[fromRow][fromCol]).firstMoveTwoSquares = true;
+    	if(board[fromRow][fromCol] instanceof Pawn && fromCol != toCol) {
+    		if(board[toRow][toCol] == null) {
+				capture(fromRow, fromCol, fromRow, toCol, isWhite); //capturing en passant
+				board[fromRow][toCol] = null; //Removing the captured pawn
+    		}else {
+    			capture(fromRow, fromCol, toRow, toCol, isWhite); //Normal capture
     		}
-    		
-    		if(board[fromRow][fromCol] instanceof Pawn && fromCol != toCol) {
-    			if(board[toRow][toCol] == null) {
-    				capture(fromRow, fromCol, fromRow, toCol, isWhite); //capturing en passant
-    				board[fromRow][toCol] = null; //Removing the captured pawn
-    			}else {
-    				capture(fromRow, fromCol, toRow, toCol, isWhite); //Normal capture
-    			}
-    		} else if(board[toRow][toCol] != null) {
-    			capture(fromRow, fromCol, toRow, toCol, isWhite);
-    		} 
+    	} else if(board[toRow][toCol] != null) {
+    		capture(fromRow, fromCol, toRow, toCol, isWhite);
+    	} 
     		
         //Movement mapping
         board[toRow][toCol] = board[fromRow][fromCol];

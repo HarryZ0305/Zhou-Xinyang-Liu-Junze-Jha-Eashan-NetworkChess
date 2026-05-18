@@ -60,7 +60,7 @@ public class GUI extends JFrame {
                     }else{
                         String msg = in;
                         String promo = "None";
-                        if((x2==0&&isWhite)||(x2==7&&!isWhite)){
+                        if(game.board[x1][y1] instanceof Pawn && ((x2==0&&isWhite)||(x2==7&&!isWhite))){
                             String prompt = "Promote to (Q/R/B/N):";
                             while (true) {
                                 promo = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
