@@ -175,7 +175,7 @@ public class GUI extends JFrame {
 
             int w  = getWidth();
             int h  = getHeight();
-            int sq = Math.min(w, h) / 8; // square size — 1/8th of shorter dimension
+            int sq = Math.min(w, h) / 8; 
 
             // 8x8 board squares filling the whole panel
             for (int row = 0; row < 8; row++) {
@@ -230,6 +230,40 @@ public class GUI extends JFrame {
                 System.out.println("Error loading images: " + e.getMessage());
             }
         }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth();
+            int h = getHeight();
+            int sq = Math.min(w, h) / 8;
+
+            for (int row = 0; row < 8; row++) {
+                for (int col = 0; col < 8; col++) {
+                    g2.setColor((row + col) % 2 == 0 ? LIGHT : DARK);
+                    g2.fillRect(col * sq, row * sq, sq, sq);
+                }
+            }
+
+            if (game != null && game.board != null) {
+                for (int row = 0; row < 8; row++) {
+                    for (int col = 0; col < 8; col++) {
+                        Piece p = game.board[row][col];
+                        if (p != null) {
+                            String colorStr = p.isWhite ? "White" : "Black";
+                            String key = colorStr + p.getType();
+                            Image img = pieceImages.get(key);
+                            if (img != null) {
+                                g2.drawImage(img, col * sq, row * sq, sq, sq, this);
+                            }
+                        }
+                    }
+                }
+            }
+        }  
     }
 }
 
