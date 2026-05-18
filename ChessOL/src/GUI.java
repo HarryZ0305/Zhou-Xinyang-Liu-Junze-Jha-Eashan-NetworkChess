@@ -33,8 +33,8 @@ public class GUI extends JFrame {
         menu.add(btnServer); menu.add(btnClient);
         //board
         JPanel workPanel = new JPanel(new BorderLayout());
-        logArea.setEditable(false);
-        workPanel.add(new JScrollPane(logArea), BorderLayout.CENTER);
+        ActiveBoardPanel activeBoard = new ActiveBoardPanel();
+        workPanel.add(activeBoard, BorderLayout.CENTER); 
         workPanel.add(inputField, BorderLayout.SOUTH);
         //send
         inputField.addActionListener(e -> {
@@ -151,12 +151,10 @@ public class GUI extends JFrame {
             }
         }).start();
     }
-    public static void main(String[] args) { new GUI(); 
+    public static void main(String[] args) { 
+            new GUI(); 
     }
 
-    // ── Home screen: chess board drawn as background behind the buttons ───────
-    // Only change to the menu block above is: new JPanel(null) → new ChessBoardMenuPanel()
-    // null layout is kept inside so setBounds() on btnServer/btnClient still works
     private static class ChessBoardMenuPanel extends JPanel {
 
         private static final Color LIGHT = new Color(240, 217, 181); // cream squares
