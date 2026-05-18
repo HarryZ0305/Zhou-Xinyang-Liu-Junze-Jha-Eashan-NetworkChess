@@ -241,7 +241,7 @@ public class GUI extends JFrame {
 
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
-                    g2.setColor((row + col) % 2 == 0 ? LIGHT : DARK);
+                    g2.setColor((row + col) % 2 == 0 ? light : dark);
                     g2.fillRect(col * sq, row * sq, sq, sq);
                 }
             }
