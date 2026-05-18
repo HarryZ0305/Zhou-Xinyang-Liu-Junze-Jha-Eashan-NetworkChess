@@ -14,6 +14,7 @@ public class GUI extends JFrame {
     private JTextField inputField = new JTextField();
     private PrintWriter out;
     Game game = new Game();
+    ActiveBoardPanel activeBoard;
     
     public GUI() {
         setTitle("Network Skeleton");
@@ -33,7 +34,7 @@ public class GUI extends JFrame {
         menu.add(btnServer); menu.add(btnClient);
         //board
         JPanel workPanel = new JPanel(new BorderLayout());
-        ActiveBoardPanel activeBoard = new ActiveBoardPanel();
+        activeBoard = new ActiveBoardPanel();
         workPanel.add(activeBoard, BorderLayout.CENTER); 
         workPanel.add(inputField, BorderLayout.SOUTH);
         //send
@@ -87,6 +88,7 @@ public class GUI extends JFrame {
                         out.println(msg);
                         logArea.append(msg + "\n");
                         game.whiteTurn=!game.whiteTurn;
+                        activeBoard.repaint();
                     }
                 }
                 inputField.setText("");
@@ -142,6 +144,7 @@ public class GUI extends JFrame {
                         }
                         game.Move(x1, y1, x2, y2, isWhite);
                         game.whiteTurn=!game.whiteTurn;
+                        SwingUtilities.invokeLater(() -> activeBoard.repaint());
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
