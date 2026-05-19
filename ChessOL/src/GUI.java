@@ -108,7 +108,6 @@ public class GUI extends JFrame {
         setVisible(true);
     }
     private void startNetwork(boolean isServer, String ip) {
-        //switch page
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         new Thread(() -> {
             try {
