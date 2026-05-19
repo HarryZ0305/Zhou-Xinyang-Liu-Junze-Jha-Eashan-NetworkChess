@@ -315,6 +315,11 @@ public class GUI extends JFrame {
                 }
             }
 
+            if (selectedRow != -1 && selectedCol != -1) {
+                g2.setColor(new Color(255, 255, 50, 120)); 
+                g2.fillRect(selectedCol * sq, selectedRow * sq, sq, sq);
+            }
+
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
