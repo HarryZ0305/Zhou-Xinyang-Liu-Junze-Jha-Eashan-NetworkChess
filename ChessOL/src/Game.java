@@ -53,7 +53,11 @@ public class Game {
     	if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
         	return false;
         }
-    	
+
+        if(fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7) {
+            return false;
+        }
+
     	Piece piece = board[fromRow][fromCol];
         
         if(piece == null) {
@@ -82,13 +86,15 @@ public class Game {
     public void Move(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
 
     	//Castling Logic
-    	if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King){
+    	if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King && !board[fromRow][fromCol].moved){
             int rookCol = toCol > fromCol ? 7 : 0;
-            int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
-            board[fromRow][newRookCol] = board[fromRow][rookCol];
-            board[fromRow][rookCol] = null;
-            board[fromRow][newRookCol].col = newRookCol;
-            board[fromRow][newRookCol].moved = true;
+            if(board[fromRow][rookCol] instanceof Rook && !board[fromRow][rookCol].moved){
+                int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
+                board[fromRow][newRookCol] = board[fromRow][rookCol];
+                board[fromRow][rookCol] = null;
+                board[fromRow][newRookCol].col = newRookCol;
+                board[fromRow][newRookCol].moved = true;
+            }
         }
     		
         for (int r = 0; r < 8; r++) {
@@ -105,14 +111,14 @@ public class Game {
     		
     	if(board[fromRow][fromCol] instanceof Pawn && fromCol != toCol) {
     		if(board[toRow][toCol] == null) {
-				capture(fromRow, fromCol, fromRow, toCol, isWhite); //capturing en passant
+				capture(fromRow, toCol, isWhite); //capturing en passant
 				board[fromRow][toCol] = null; //Removing the captured pawn
     		}else {
-    			capture(fromRow, fromCol, toRow, toCol, isWhite); //Normal capture
+    			capture(toRow, toCol, isWhite); //Normal capture
     		}
     	} else if(board[toRow][toCol] != null) {
-    		capture(fromRow, fromCol, toRow, toCol, isWhite);
-    	} 
+    		capture(toRow, toCol, isWhite);
+    	}
     		
         //Movement mapping
         board[toRow][toCol] = board[fromRow][fromCol];
@@ -122,8 +128,8 @@ public class Game {
         board[toRow][toCol].moved = true;
     }
 
-    public Piece capture(int x1, int y1, int x2, int y2, boolean isWhite){
-        Piece captured = board[x2][y2];
+    public Piece capture(int toRow, int toCol, boolean isWhite){
+        Piece captured = board[toRow][toCol];
         if(isWhite){
             blackPlayer.pieces.remove(captured);
         }else{

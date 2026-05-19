@@ -35,61 +35,69 @@ public class GUI extends JFrame {
         //board
         JPanel workPanel = new JPanel(new BorderLayout());
         activeBoard = new ActiveBoardPanel();
-        workPanel.add(activeBoard, BorderLayout.CENTER); 
+        logArea.setEditable(false);
+        JScrollPane logScroll = new JScrollPane(logArea);
+        workPanel.add(activeBoard, BorderLayout.CENTER);
         workPanel.add(inputField, BorderLayout.SOUTH);
+        workPanel.add(logScroll, BorderLayout.EAST);
         //send
         inputField.addActionListener(e -> {
             if (out != null) {
-                String in=inputField.getText();
+                String in = inputField.getText();
                 String[] parts = in.split(",");
                 if (parts.length < 5) {
-                    SwingUtilities.invokeLater(() -> logArea.append("Chat: " + in + "\n"));
+                    logArea.append("Chat: " + in + "\n");
+                    inputField.setText("");
                     return;
                 }
-                int x1 = Integer.parseInt(parts[0]);
-                int y1 = Integer.parseInt(parts[1]);
-                int x2 = Integer.parseInt(parts[2]);
-                int y2 = Integer.parseInt(parts[3]);
-                boolean isWhite = Boolean.parseBoolean(parts[4]);
-                Player player=game.whiteTurn?game.whitePlayer:game.blackPlayer;
-                boolean c=game.canMove(x1, y1, x2, y2, isWhite,player.isInCheck);
-                if (out.checkError()) {
-                    logArea.append("System: Send failed, connection lost.\n");
-                } else {
-                    if(!c){
+                try {
+                    int x1 = Integer.parseInt(parts[0]);
+                    int y1 = Integer.parseInt(parts[1]);
+                    int x2 = Integer.parseInt(parts[2]);
+                    int y2 = Integer.parseInt(parts[3]);
+                    boolean isWhite = Boolean.parseBoolean(parts[4]);
+                    Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
+                    boolean c = game.canMove(x1, y1, x2, y2, isWhite, player.isInCheck);
+                    if (!c) {
                         logArea.append("Invalid move\n");
-                    }else{
+                    } else {
                         String msg = in;
                         String promo = "None";
-                        if(game.board[x1][y1] instanceof Pawn && ((x2==0&&isWhite)||(x2==7&&!isWhite))){
+                        if (game.board[x1][y1] instanceof Pawn && ((x2 == 0 && isWhite) || (x2 == 7 && !isWhite))) {
                             String prompt = "Promote to (Q/R/B/N):";
                             while (true) {
                                 promo = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                                if (promo == null) { prompt = "Invalid piece type. Promote to (Q/R/B/N):"; continue; }
+                                if (promo == null) { promo = "Q"; break; }
                                 promo = promo.trim().toUpperCase();
                                 if (promo.equals("Q") || promo.equals("R") || promo.equals("B") || promo.equals("N")) break;
                                 prompt = "Invalid piece type. Promote to (Q/R/B/N):";
                             }
                             msg += "," + promo;
-                        }else{
+                        } else {
                             msg += ",None";
                         }
                         game.Move(x1, y1, x2, y2, isWhite);
-                        if(!promo.equals("None")){
+                        if (!promo.equals("None")) {
                             game.promotion(x2, y2, isWhite, promo);
                         }
                         Piece king = game.getKing(!isWhite);
-                        if(game.isInCheck(king.row, king.col, !isWhite)){
+                        if (game.isInCheck(king.row, king.col, !isWhite)) {
                             logArea.append("Check!\n");
-                            msg+=",true";
-                        }else{
-                            msg+=",false";
+                            msg += ",true";
+                        } else {
+                            msg += ",false";
                         }
                         out.println(msg);
-                        logArea.append(msg + "\n");
-                        game.whiteTurn=!game.whiteTurn;
-                        activeBoard.repaint();
+                        if (out.checkError()) {
+                            logArea.append("System: Send failed, connection lost.\n");
+                        } else {
+                            logArea.append(msg + "\n");
+                            game.whiteTurn = !game.whiteTurn;
+                            activeBoard.repaint();
+                        }
                     }
+                } catch (NumberFormatException ex) {
+                    logArea.append("Parse error: " + ex.getMessage() + "\n");
                 }
                 inputField.setText("");
             }
@@ -130,21 +138,26 @@ public class GUI extends JFrame {
                         int x2 = Integer.parseInt(parts[2]);
                         int y2 = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
-                        String promo =parts[5];
+                        String promo = parts[5];
                         boolean isCheck = Boolean.parseBoolean(parts[6]);
-                        SwingUtilities.invokeLater(() -> logArea.append("Moved:"+msg+ "\n"));
-                        if(!promo.equals("None")){
-                            // Handle promotion if needed (not implemented in this snippet)
-                            game.promotion(x1, y1, isWhite,promo);
-                        }
-                        if(isCheck){
-                            SwingUtilities.invokeLater(() -> logArea.append("In Check!"+"\n"));
-                            Player player=isWhite?game.whitePlayer:game.blackPlayer;
-                            player.isInCheck=true;
-                        }
-                        game.Move(x1, y1, x2, y2, isWhite);
-                        game.whiteTurn=!game.whiteTurn;
-                        SwingUtilities.invokeLater(() -> activeBoard.repaint());
+                        SwingUtilities.invokeLater(() -> {
+                            logArea.append("Moved:" + msg + "\n");
+                            if (!game.canMove(x1, y1, x2, y2, isWhite, false)) {
+                                logArea.append("Invalid move received from peer\n");
+                                return;
+                            }
+                            if (!promo.equals("None")) {
+                                game.promotion(x1, y1, isWhite, promo);
+                            }
+                            if (isCheck) {
+                                logArea.append("In Check!\n");
+                                Player player = isWhite ? game.whitePlayer : game.blackPlayer;
+                                player.isInCheck = true;
+                            }
+                            game.Move(x1, y1, x2, y2, isWhite);
+                            game.whiteTurn = !game.whiteTurn;
+                            activeBoard.repaint();
+                        });
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
