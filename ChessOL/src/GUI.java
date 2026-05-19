@@ -88,7 +88,7 @@ public class GUI extends JFrame {
                 }
             }
             
-            String message = fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion
+            String message = fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
             
             game.Move(fromRow, fromCol, toRow, toCol, isWhite);
             if (!pawnPromotion.equals("None")) {
