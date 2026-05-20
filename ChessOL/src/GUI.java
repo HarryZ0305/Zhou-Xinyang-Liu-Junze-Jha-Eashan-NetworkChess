@@ -18,7 +18,7 @@ public class GUI extends JFrame {
     private boolean isServer;
 
     public GUI() {
-        setTitle("Network Skeleton");
+        setTitle("ChessOL");
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
@@ -98,6 +98,9 @@ public class GUI extends JFrame {
     // ══════════════════════════════════════════════════════════════════════
 
     private void drawBattleBackground(Graphics2D g2, int W, int H) {
+        if (W == 0 || H == 0){  //RadialGradientPaint throws if radius <= 0
+            return;
+        } 
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
 
@@ -467,9 +470,15 @@ public class GUI extends JFrame {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
             }
 
+            // Mover is no longer in check (canMove already enforced that).
+            Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
+            mover.isInCheck = false;
+
             Piece king = game.getKing(!isWhite);
             if (game.isInCheck(king.row, king.col, !isWhite)) {
                 logArea.append("Check!\n");
+                Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
+                opponent.isInCheck = true;
                 message += ",true";
             } else {
                 message += ",false";
@@ -482,7 +491,21 @@ public class GUI extends JFrame {
                 logArea.append("Moved: " + message + "\n");
                 game.whiteTurn = !game.whiteTurn;
                 activeBoard.repaint();
+                announceEndIfOver();
             }
+        }
+    }
+
+    private void announceEndIfOver() {
+        boolean sideToMove = game.whiteTurn;
+        Piece king = game.getKing(sideToMove);
+        boolean inCheck = game.isInCheck(king.row, king.col, sideToMove);
+        boolean hasMove = game.hasLegalMove(sideToMove);
+        if (!hasMove && inCheck) {
+            String winner = sideToMove ? "Black" : "White";
+            logArea.append("Checkmate! " + winner + " wins.\n");
+        } else if (!hasMove) {
+            logArea.append("Stalemate. Draw.\n");
         }
     }
 
