@@ -21,18 +21,25 @@ public class GUI extends JFrame {
         setTitle("Network Skeleton");
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        //menu — now uses ChessBoardMenuPanel for the home screen background
-        JPanel menu = new ChessBoardMenuPanel();
+        //menu
+        JPanel menu = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 20, 10, 20);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        JLabel title = new JLabel("ChessOL", SwingConstants.CENTER);
+        title.setFont(new Font("Serif", Font.BOLD, 38));
+        menu.add(title, gbc);
         JButton btnServer = new JButton("Server");
-        btnServer.setBounds(50, 50, 150, 40);
         JButton btnClient = new JButton("Client");
-        btnClient.setBounds(250, 50, 150, 40);
         btnServer.addActionListener(e -> startNetwork(true, null));
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
-        menu.add(btnServer); menu.add(btnClient);
+        gbc.gridwidth = 1; gbc.gridy = 1; gbc.gridx = 0;
+        menu.add(btnServer, gbc);
+        gbc.gridx = 1;
+        menu.add(btnClient, gbc);
         //board
         JPanel workPanel = new JPanel(new BorderLayout());
         activeBoard = new ActiveBoardPanel();
@@ -179,54 +186,6 @@ public class GUI extends JFrame {
     
     public static void main(String[] args) { 
             new GUI(); 
-    }
-
-    private static class ChessBoardMenuPanel extends JPanel {
-
-        private static final Color LIGHT = new Color(240, 217, 181); // cream squares
-        private static final Color DARK  = new Color(181, 136,  99); // brown squares
-
-        ChessBoardMenuPanel() {
-            setLayout(null); // preserves null layout — button .setBounds() unchanged
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int w  = getWidth();
-            int h  = getHeight();
-            int sq = Math.min(w, h) / 8; 
-
-            // 8x8 board squares filling the whole panel
-            for (int row = 0; row < 8; row++) {
-                for (int col = 0; col < 8; col++) {
-                    g2.setColor((row + col) % 2 == 0 ? LIGHT : DARK);
-                    g2.fillRect(col * sq, row * sq, sq, sq);
-                }
-            }
-
-            // Semi-transparent overlay so buttons + text are readable on top
-            g2.setColor(new Color(0, 0, 0, 140));
-            g2.fillRect(0, 0, w, h);
-
-            // Game title
-            g2.setFont(new Font("Serif", Font.BOLD, 38));
-            g2.setColor(new Color(240, 210, 150));
-            String title = "ChessOL";
-            FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(title, w / 2 - fm.stringWidth(title) / 2, h / 2 - 15);
-
-            // Subtitle
-            g2.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            g2.setColor(new Color(200, 185, 155));
-            String sub = "Select Server or Client to begin";
-            FontMetrics fm2 = g2.getFontMetrics();
-            g2.drawString(sub, w / 2 - fm2.stringWidth(sub) / 2, h / 2 + 12);
-        }
     }
 
     private class ActiveBoardPanel extends JPanel {
