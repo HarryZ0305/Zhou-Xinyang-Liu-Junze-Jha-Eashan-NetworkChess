@@ -33,3 +33,10 @@ A fully functional, multiplayer, graphical chess application built from scratch 
    ```bash
    javac -d bin src/*.java
    java -cp bin GUI
+4. To Play:
+   Player 1 (Host): Click Server. The game will begin waiting on port 8888.
+   Player 2 (Join): Click Client. Enter the IP address of Player 1 (use 127.0.0.1 if testing on the same computer) and connect.
+
+## ⌨️ Controls
+Moving Pieces: Click a friendly piece to select it (it will highlight yellow). Click a valid destination square to move it.
+Chatting: Type in the text field at the bottom of the window and press Enter to send a message to your opponent.
