@@ -517,13 +517,16 @@ public class GUI extends JFrame {
                 Socket s;
                 if (isServer) {
                     logArea.append("Waiting for client on 8888...\n");
-                    s = new ServerSocket(8888).accept();
+                    try (ServerSocket ss = new ServerSocket(8888)) {
+                        s = ss.accept();
+                    }
                 } else {
                     logArea.append("Connecting to " + ip + "...\n");
                     s = new Socket(ip, 8888);
                 }
                 out = new PrintWriter(s.getOutputStream(), true);
                 logArea.append("System: Connected!\n");
+                SwingUtilities.invokeLater(() -> activeBoard.repaint()); 
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
@@ -536,8 +539,8 @@ public class GUI extends JFrame {
                     try {
                         int fromRow = Integer.parseInt(parts[0]);
                         int fromCol = Integer.parseInt(parts[1]);
-                        int toRow   = Integer.parseInt(parts[2]);
-                        int toCol   = Integer.parseInt(parts[3]);
+                        int toRow = Integer.parseInt(parts[2]);
+                        int toCol = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
                         String pawnPromotion = parts[5];
                         boolean isCheck = Boolean.parseBoolean(parts[6]);
@@ -547,17 +550,21 @@ public class GUI extends JFrame {
                                 logArea.append("Invalid move received from peer\n");
                                 return;
                             }
+                            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
                             if (!pawnPromotion.equals("None")) {
-                                game.promotion(fromRow, fromCol, isWhite, pawnPromotion);
+                                game.promotion(toRow, toCol, isWhite, pawnPromotion);
                             }
+                            //Mover is no longer in check
+                            Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
+                            mover.isInCheck = false;
                             if (isCheck) {
                                 logArea.append("In Check!\n");
-                                Player player = isWhite ? game.whitePlayer : game.blackPlayer;
-                                player.isInCheck = true;
+                                Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
+                                opponent.isInCheck = true;
                             }
-                            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
                             game.whiteTurn = !game.whiteTurn;
                             activeBoard.repaint();
+                            announceEndIfOver();
                         });
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
@@ -580,6 +587,10 @@ public class GUI extends JFrame {
         private HashMap<String, Image> pieceImages = new HashMap<>();
         private int selectedRow = -1;
         private int selectedCol = -1;
+        
+        private boolean flipped(){ 
+            return !isServer; 
+        }
 
         public ActiveBoardPanel() {
             loadImages();
@@ -589,9 +600,13 @@ public class GUI extends JFrame {
                     if (game == null || out == null) return;
                     int w = getWidth(), h = getHeight();
                     int sq = Math.min(w, h) / 8;
-                    int col = e.getX() / sq;
-                    int row = e.getY() / sq;
-                    if (col >= 8 || row >= 8) return;
+                    int displayCol = e.getX() / sq;
+                    int displayRow = e.getY() / sq;
+                    if (displayCol >= 8 || displayRow >= 8){
+                        return;
+                    } 
+                    int col = flipped() ? 7 - displayCol : displayCol;
+                    int row = flipped() ? 7 - displayRow : displayRow;
                     if (selectedRow == -1) {
                         Piece p = game.board[row][col];
                         if (p != null && p.isWhite == game.whiteTurn && p.isWhite == isServer) {
@@ -640,14 +655,20 @@ public class GUI extends JFrame {
             int sq = Math.min(w, h) / 8;
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
+                    int dr = flipped() ? 7 - row : row;
+                    int dc = flipped() ? 7 - col : col;
                     g2.setColor((row + col) % 2 == 0 ? light : dark);
-                    g2.fillRect(col * sq, row * sq, sq, sq);
+                    g2.fillRect(dc * sq, dr * sq, sq, sq);
                 }
             }
+            
             if (selectedRow != -1 && selectedCol != -1) {
+                int dr = flipped() ? 7 - selectedRow : selectedRow;
+                int dc = flipped() ? 7 - selectedCol : selectedCol;
                 g2.setColor(new Color(255, 255, 50, 120));
-                g2.fillRect(selectedCol * sq, selectedRow * sq, sq, sq);
+                g2.fillRect(dc * sq, dr * sq, sq, sq);
             }
+
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
