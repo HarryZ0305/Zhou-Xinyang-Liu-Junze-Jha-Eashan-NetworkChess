@@ -40,45 +40,81 @@ public class Game {
     }
 
 
-    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite,boolean isInCheck){
-    	
-        if(isWhite != whiteTurn) {
-            return false;
-        }
-
-    	if(toRow == fromRow && toCol == fromCol) {
-        	return false;
-        }
-    	
-    	if(toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
-        	return false;
-        }
-
-        if(fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7) {
-            return false;
-        }
-
-    	Piece piece = board[fromRow][fromCol];
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite, boolean isInCheck) {
         
-        if(piece == null) {
-        	return false;
+        if (isWhite != whiteTurn) {
+            return false;
         }
 
-        	Piece target = board[toRow][toCol];
-        	if(target == null || target.isWhite != piece.isWhite) {
-        		if(isWhite == piece.isWhite){
-        			if(piece.checkRule(toRow, toCol, board)){
-                    if(piece instanceof King){
+        if (toRow == fromRow && toCol == fromCol) {
+            return false;
+        }
+        
+        if (toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) {
+            return false;
+        }
+
+        if (fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7) {
+            return false;
+        }
+
+        Piece piece = board[fromRow][fromCol];
+        
+        if (piece == null) {
+            return false;
+        }
+
+        Piece target = board[toRow][toCol];
+        if (target == null || target.isWhite != piece.isWhite) {
+            if (isWhite == piece.isWhite) {
+                if (piece.checkRule(toRow, toCol, board)) {
+                    
+                    // Castling check
+                    if (piece instanceof King) {
                         int step = toCol > fromCol ? 1 : -1;
-                        for(int c = fromCol; c != toCol; c += step){
-                            if(isInCheck(fromRow, c, isWhite)){
+                        for (int c = fromCol; c != toCol; c += step) {
+                            if (this.isInCheck(fromRow, c, isWhite)) {
                                 return false;
                             }
                         }
                     }
-        			return true;
-        			}
-        		}
+
+                    // Simulate move for King safety
+                    Piece tempTarget = board[toRow][toCol];
+                    board[toRow][toCol] = piece;
+                    board[fromRow][fromCol] = null;
+                    
+                    ArrayList<Piece> enemyPieces = isWhite ? blackPlayer.pieces : whitePlayer.pieces;
+                    if (tempTarget != null) {
+                        enemyPieces.remove(tempTarget);
+                    }
+
+                    int kingRow, kingCol;
+                    if (piece instanceof King) {
+                        kingRow = toRow;
+                        kingCol = toCol;
+                    } else {
+                        Piece king = getKing(isWhite);
+                        kingRow = king.row;
+                        kingCol = king.col;
+                    }
+
+                    boolean putsKingInCheck = this.isInCheck(kingRow, kingCol, isWhite);
+
+                    // Revert simulated move
+                    board[toRow][toCol] = tempTarget;
+                    board[fromRow][fromCol] = piece;
+                    if (tempTarget != null) {
+                        enemyPieces.add(tempTarget);
+                    }
+
+                    if (putsKingInCheck) {
+                        return false;
+                    }
+                    
+                    return true;
+                }
+            }
         }
         return false;
     }
