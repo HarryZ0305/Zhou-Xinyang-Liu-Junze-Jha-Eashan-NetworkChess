@@ -81,7 +81,7 @@ public class GUI extends JFrame {
         inputField.addActionListener(e -> {
             if (out != null) {
                 String msg = inputField.getText();
-                out.println(msg);
+                out.println("CHAT:" + msg);
                 logArea.append("You: " + msg + "\n");
                 inputField.setText("");
             }
@@ -463,8 +463,8 @@ public class GUI extends JFrame {
                 }
             }
 
-            String message = fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
-
+            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
+            
             game.Move(fromRow, fromCol, toRow, toCol, isWhite);
             if (!pawnPromotion.equals("None")) {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
@@ -530,29 +530,30 @@ public class GUI extends JFrame {
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
-                    String message = line;
-                    String[] parts = message.split(",");
-                    if (parts.length < 5) {
-                        SwingUtilities.invokeLater(() -> logArea.append("Chat: " + message + "\n"));
-                        continue;
-                    }
-                    try {
-                        int fromRow = Integer.parseInt(parts[0]);
-                        int fromCol = Integer.parseInt(parts[1]);
-                        int toRow = Integer.parseInt(parts[2]);
-                        int toCol = Integer.parseInt(parts[3]);
-                        boolean isWhite = Boolean.parseBoolean(parts[4]);
-                        String pawnPromotion = parts[5];
-                        boolean isCheck = Boolean.parseBoolean(parts[6]);
-                        SwingUtilities.invokeLater(() -> {
-                            logArea.append("Moved:" + message + "\n");
-                            if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite, false)) {
-                                logArea.append("Invalid move received from peer\n");
-                                return;
-                            }
-                            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
-                            if (!pawnPromotion.equals("None")) {
-                                game.promotion(toRow, toCol, isWhite, pawnPromotion);
+                    if (line.startsWith("CHAT:")) {
+                        String chatMsg = line.substring(5);
+                        SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + chatMsg + "\n"));
+                    } else if (line.startsWith("MOVE:")) {
+                        String message = line.substring(5);
+                        String[] parts = message.split(",");
+                        try {
+                            int fromRow = Integer.parseInt(parts[0]);
+                            int fromCol = Integer.parseInt(parts[1]);
+                            int toRow = Integer.parseInt(parts[2]);
+                            int toCol = Integer.parseInt(parts[3]);
+                            boolean isWhite = Boolean.parseBoolean(parts[4]);
+                            String pawnPromotion = parts[5];
+                            boolean isCheck = Boolean.parseBoolean(parts[6]);
+                            SwingUtilities.invokeLater(() -> {
+                                logArea.append("Moved:" + message + "\n");
+                                if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite, false)) {
+                                    logArea.append("Invalid move received from peer\n");
+                                    return;
+                                }
+                                game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+                                if (!pawnPromotion.equals("None")) {
+                                    game.promotion(toRow, toCol, isWhite, pawnPromotion);
+                                }
                             }
                             //Mover is no longer in check
                             Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
