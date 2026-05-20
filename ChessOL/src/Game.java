@@ -79,16 +79,25 @@ public class Game {
                         }
                     }
 
-                    // Simulate move for King safety
+                    //Simulate move for King safety
                     Piece tempTarget = board[toRow][toCol];
+                    boolean isEnPassant = piece instanceof Pawn
+                            && fromCol != toCol
+                            && tempTarget == null;
+                    Piece epCaptured = isEnPassant ? board[fromRow][toCol] : null;
+
                     board[toRow][toCol] = piece;
                     board[fromRow][fromCol] = null;
-                    
+                    if (isEnPassant) {
+                        board[fromRow][toCol] = null;
+                    }
                     ArrayList<Piece> enemyPieces = isWhite ? blackPlayer.pieces : whitePlayer.pieces;
                     if (tempTarget != null) {
                         enemyPieces.remove(tempTarget);
                     }
-
+                    if (epCaptured != null) {
+                        enemyPieces.remove(epCaptured);
+                    }
                     int kingRow, kingCol;
                     if (piece instanceof King) {
                         kingRow = toRow;
@@ -101,13 +110,18 @@ public class Game {
 
                     boolean putsKingInCheck = this.isInCheck(kingRow, kingCol, isWhite);
 
-                    // Revert simulated move
+                    //Revert simulated move
                     board[toRow][toCol] = tempTarget;
                     board[fromRow][fromCol] = piece;
+                    if (isEnPassant) {
+                        board[fromRow][toCol] = epCaptured;
+                    }
                     if (tempTarget != null) {
                         enemyPieces.add(tempTarget);
                     }
-
+                    if (epCaptured != null) {
+                        enemyPieces.add(epCaptured);
+                    }
                     if (putsKingInCheck) {
                         return false;
                     }
@@ -174,40 +188,46 @@ public class Game {
         return captured;
     }
 
-    public boolean isInCheck(int x,int y,boolean isWhite){
-        ArrayList<Piece> player=!isWhite?whitePlayer.pieces:blackPlayer.pieces;
-        for(Piece p : player){
-            if(p.checkRule(x, y, board)){
+    public boolean isInCheck(int row, int col, boolean isWhite){
+        ArrayList<Piece> enemy = !isWhite ? whitePlayer.pieces : blackPlayer.pieces;
+        for (Piece p : enemy) {
+            if (p instanceof Pawn) {
+                //Pawns attack the two diagonals one rank ahead
+                int direction = p.isWhite ? -1 : 1;
+                if (row == p.row + direction && Math.abs(col - p.col) == 1) {
+                    return true;
+                }
+            } else if (p.checkRule(row, col, board)) {
                 return true;
             }
         }
         return false;
     }
 
-    public void promotion(int x, int y, boolean isWhite,String promo){
+    public void promotion(int row, int col, boolean isWhite,String promo){
         ArrayList<Piece> playerPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
         for(Piece p:playerPieces){
-            if(p.row==x&&p.col==y){
+            if(p.row==row&&p.col==col){
                 playerPieces.remove(p);
                 break;
             }
         }
         switch(promo){
             case "Q":
-                board[x][y] = new Queen(x, y, isWhite);
-                playerPieces.add(board[x][y]);
+                board[row][col] = new Queen(row, col, isWhite);
+                playerPieces.add(board[row][col]);
                 break;
             case "R":
-                board[x][y] = new Rook(x, y, isWhite);
-                playerPieces.add(board[x][y]);
+                board[row][col] = new Rook(row, col, isWhite);
+                playerPieces.add(board[row][col]);
                 break;
             case "B":
-                board[x][y] = new Bishop(x, y, isWhite);
-                playerPieces.add(board[x][y]);
+                board[row][col] = new Bishop(row, col, isWhite);
+                playerPieces.add(board[row][col]);
                 break;
             case "N":
-                board[x][y] = new Knight(x, y, isWhite);
-                playerPieces.add(board[x][y]);
+                board[row][col] = new Knight(row, col, isWhite);
+                playerPieces.add(board[row][col]);
                 break;
         }
     }
