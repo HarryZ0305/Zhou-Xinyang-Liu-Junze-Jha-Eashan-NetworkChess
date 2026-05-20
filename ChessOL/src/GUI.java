@@ -529,7 +529,7 @@ public class GUI extends JFrame {
                             }
                             if (isCheck) {
                                 logArea.append("In Check!\n");
-                                Player player = isWhite ? game.whitePlayer : game.blackPlayer;
+                                Player player = isWhite ? game.blackPlayer : game.whitePlayer;
                                 player.isInCheck = true;
                             }
                             game.Move(fromRow, fromCol, toRow, toCol, isWhite);
