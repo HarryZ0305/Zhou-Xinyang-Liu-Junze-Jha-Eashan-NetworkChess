@@ -69,8 +69,8 @@ public class Game {
             if (isWhite == piece.isWhite) {
                 if (piece.checkRule(toRow, toCol, board)) {
                     
-                    // Castling check
-                    if (piece instanceof King) {
+                    // Castling: king cannot start in check or pass through an attacked square.
+                    if (piece instanceof King && Math.abs(toCol - fromCol) == 2) {
                         int step = toCol > fromCol ? 1 : -1;
                         for (int c = fromCol; c != toCol; c += step) {
                             if (this.isInCheck(fromRow, c, isWhite)) {
