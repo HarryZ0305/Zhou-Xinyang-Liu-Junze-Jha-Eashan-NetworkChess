@@ -204,6 +204,21 @@ public class Game {
         return false;
     }
 
+    public boolean hasLegalMove(boolean isWhite) {
+        ArrayList<Piece> snapshot = new ArrayList<>(
+                isWhite ? whitePlayer.pieces : blackPlayer.pieces);
+        for (Piece p : snapshot) {
+            for (int r = 0; r < 8; r++) {
+                for (int c = 0; c < 8; c++) {
+                    if (canMove(p.row, p.col, r, c, isWhite, false)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public void promotion(int row, int col, boolean isWhite,String promo){
         ArrayList<Piece> playerPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
         for(Piece p:playerPieces){
