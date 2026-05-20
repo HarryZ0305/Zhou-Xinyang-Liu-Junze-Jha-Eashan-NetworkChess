@@ -661,7 +661,7 @@ public class GUI extends JFrame {
                     g2.fillRect(dc * sq, dr * sq, sq, sq);
                 }
             }
-            
+
             if (selectedRow != -1 && selectedCol != -1) {
                 int dr = flipped() ? 7 - selectedRow : selectedRow;
                 int dc = flipped() ? 7 - selectedCol : selectedCol;
@@ -678,7 +678,9 @@ public class GUI extends JFrame {
                             String key = colorStr + p.getType();
                             Image img = pieceImages.get(key);
                             if (img != null) {
-                                g2.drawImage(img, col * sq, row * sq, sq, sq, this);
+                                int dr = flipped() ? 7 - row : row;
+                                int dc = flipped() ? 7 - col : col;
+                                g2.drawImage(img, dc * sq, dr * sq, sq, sq, this);
                             }
                         }
                     }
