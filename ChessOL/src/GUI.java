@@ -615,16 +615,26 @@ public class GUI extends JFrame {
                             selectedCol = col;
                             repaint();
                         }
-                    } else {
+                    } } else {
                         if (selectedRow == row && selectedCol == col) {
+                            //Deselect if clicking the same piece twice
                             selectedRow = -1;
                             selectedCol = -1;
                             repaint();
                         } else {
-                            attemptMove(selectedRow, selectedCol, row, col);
-                            selectedRow = -1;
-                            selectedCol = -1;
-                            repaint();
+                            Piece targetP = game.board[row][col];
+                            //Transfer selection when click on same color piece
+                            if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == isServer) {
+                                selectedRow = row;
+                                selectedCol = col;
+                                repaint();
+                            } else {
+                                //Otherwise, attempt the move
+                                attemptMove(selectedRow, selectedCol, row, col);
+                                selectedRow = -1;
+                                selectedCol = -1;
+                                repaint();
+                            }
                         }
                     }
                 }
