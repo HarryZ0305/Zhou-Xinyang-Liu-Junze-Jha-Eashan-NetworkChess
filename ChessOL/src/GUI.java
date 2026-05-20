@@ -69,10 +69,13 @@ public class GUI extends JFrame {
         gbc.gridx = 1;
         menu.add(btnClient, gbc);
 
-        // ── board panel (unchanged) ─────────────────────────────────────────
         JPanel workPanel = new JPanel(new BorderLayout());
         activeBoard = new ActiveBoardPanel();
         logArea.setEditable(false);
+        
+        //Text area auto-scroll to the bottom when new text is added
+        ((javax.swing.text.DefaultCaret)logArea.getCaret()).setUpdatePolicy(javax.swing.text.DefaultCaret.ALWAYS_UPDATE);
+        
         JScrollPane logScroll = new JScrollPane(logArea);
         workPanel.add(activeBoard, BorderLayout.CENTER);
         workPanel.add(inputField, BorderLayout.SOUTH);
