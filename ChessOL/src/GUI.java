@@ -8,39 +8,68 @@ import java.io.IOException;
 import java.util.HashMap;
 
 public class GUI extends JFrame {
-    
-	private JPanel cards = new JPanel(new CardLayout());
+
+    private JPanel cards = new JPanel(new CardLayout());
     private JTextArea logArea = new JTextArea();
     private JTextField inputField = new JTextField();
     private PrintWriter out;
     Game game = new Game();
     ActiveBoardPanel activeBoard;
     private boolean isServer;
-    
+
     public GUI() {
         setTitle("Network Skeleton");
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        //menu
-        JPanel menu = new JPanel(new GridBagLayout());
+
+        // ── menu: custom-painted battle background ──────────────────────────
+        JPanel menu = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawBattleBackground((Graphics2D) g, getWidth(), getHeight());
+            }
+        };
+        menu.setOpaque(true);
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 20, 10, 20);
         gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+
         JLabel title = new JLabel("ChessOL", SwingConstants.CENTER);
         title.setFont(new Font("Serif", Font.BOLD, 38));
+        title.setForeground(new Color(255, 235, 180));
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
         menu.add(title, gbc);
+
         JButton btnServer = new JButton("Server");
         JButton btnClient = new JButton("Client");
+
+        for (JButton btn : new JButton[]{btnServer, btnClient}) {
+            btn.setBackground(new Color(60, 30, 10, 200));
+            btn.setForeground(new Color(255, 235, 180));
+            btn.setFont(new Font("Serif", Font.BOLD, 16));
+            btn.setFocusPainted(false);
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 160, 80), 2),
+                BorderFactory.createEmptyBorder(6, 18, 6, 18)
+            ));
+            btn.setOpaque(true);
+            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        }
+
         btnServer.addActionListener(e -> startNetwork(true, null));
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
+
         gbc.gridwidth = 1; gbc.gridy = 1; gbc.gridx = 0;
         menu.add(btnServer, gbc);
         gbc.gridx = 1;
         menu.add(btnClient, gbc);
-        //board
+
+        // ── board panel (unchanged) ─────────────────────────────────────────
         JPanel workPanel = new JPanel(new BorderLayout());
         activeBoard = new ActiveBoardPanel();
         logArea.setEditable(false);
@@ -48,36 +77,373 @@ public class GUI extends JFrame {
         workPanel.add(activeBoard, BorderLayout.CENTER);
         workPanel.add(inputField, BorderLayout.SOUTH);
         workPanel.add(logScroll, BorderLayout.EAST);
-        //send
+
         inputField.addActionListener(e -> {
             if (out != null) {
                 String msg = inputField.getText();
-                out.println(msg); 
+                out.println(msg);
                 logArea.append("You: " + msg + "\n");
                 inputField.setText("");
             }
         });
+
         cards.add(menu, "MENU");
         cards.add(workPanel, "WORK");
         add(cards);
         setVisible(true);
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  BATTLE SCENE BACKGROUND
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void drawBattleBackground(Graphics2D g2, int W, int H) {
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+
+        int ground = (int)(H * 0.72f);
+
+        // Sky: blood-orange dusk
+        GradientPaint sky = new GradientPaint(
+            0, 0,      new Color(20, 10, 5),
+            0, ground, new Color(185, 65, 10));
+        g2.setPaint(sky);
+        g2.fillRect(0, 0, W, H);
+
+        // Sun low on horizon
+        int sunX = (int)(W * 0.72f), sunY = ground - 18;
+        g2.setColor(new Color(220, 60, 20, 180));
+        g2.fillOval(sunX - 30, sunY - 30, 60, 60);
+        for (int r = 1; r <= 4; r++) {
+            g2.setColor(new Color(220, 80, 10, 45 - r * 10));
+            g2.setStroke(new BasicStroke(r * 3f));
+            g2.drawOval(sunX - 30 - r*10, sunY - 30 - r*10, 60 + r*20, 60 + r*20);
+        }
+
+        // Smoke plumes
+        drawSmoke(g2, (int)(W*0.12f), ground - 10);
+        drawSmoke(g2, (int)(W*0.85f), ground - 8);
+        drawSmoke(g2, (int)(W*0.35f), ground - 5);
+
+        // Ground
+        GradientPaint gnd = new GradientPaint(
+            0, ground, new Color(45, 32, 12),
+            0, H,      new Color(22, 15, 5));
+        g2.setPaint(gnd);
+        g2.fillRect(0, ground, W, H - ground);
+
+        // Ground texture
+        g2.setColor(new Color(30, 20, 8, 100));
+        g2.setStroke(new BasicStroke(1f));
+        int[][] tufts = {{40,8},{110,14},{190,6},{280,11},{360,7},{430,13},{80,18},{230,16},{400,9}};
+        for (int[] t : tufts) {
+            int tx = t[0] * W / 500, ty = ground + t[1];
+            g2.drawLine(tx, ty, tx + 8, ty - 4);
+            g2.drawLine(tx + 4, ty, tx + 12, ty - 5);
+        }
+
+        // Distant hill silhouette
+        g2.setColor(new Color(35, 20, 8, 160));
+        int[] hx = {0, W/6, W/4, W*2/5, W/2, W*3/5, W*3/4, W*5/6, W, W, 0};
+        int[] hy = {ground, ground-28, ground-40, ground-22, ground-50,
+                    ground-30, ground-44, ground-18, ground-35, H, H};
+        g2.fillPolygon(hx, hy, hx.length);
+
+        // ── LEFT ARMY: white shields, light grey armour ──────────────────
+        Color whiteShield = new Color(230, 230, 230);
+        Color whiteArmour = new Color(180, 180, 190);
+        int[] leftXs = {20, 55, 90, 130, 168, 210};
+        for (int i = 0; i < leftXs.length; i++) {
+            int x = leftXs[i] * W / 500;
+            boolean hasAxe   = (i % 3 == 0);
+            boolean hasSword = (i % 3 == 1);
+            drawFootSoldier(g2, x, ground, true, hasAxe, hasSword, !hasAxe && !hasSword,
+                            whiteShield, whiteArmour);
+        }
+        drawHorseman(g2, (int)(W * 0.09f), ground,     true, whiteArmour, true);
+        drawHorseman(g2, (int)(W * 0.20f), ground - 4, true, whiteArmour, false);
+
+        // ── RIGHT ARMY: black shields, dark grey armour ──────────────────
+        Color blackShield = new Color(30, 30, 30);
+        Color blackArmour = new Color(55, 55, 60);
+        int[] rightXs = {480, 445, 410, 370, 330, 295};
+        for (int i = 0; i < rightXs.length; i++) {
+            int x = rightXs[i] * W / 500;
+            boolean hasAxe   = (i % 3 == 2);
+            boolean hasSword = (i % 3 == 0);
+            drawFootSoldier(g2, x, ground, false, hasAxe, hasSword, !hasAxe && !hasSword,
+                            blackShield, blackArmour);
+        }
+        drawHorseman(g2, (int)(W * 0.91f), ground,     false, blackArmour, false);
+        drawHorseman(g2, (int)(W * 0.79f), ground - 4, false, blackArmour, true);
+
+        // ── Centre clash ─────────────────────────────────────────────────
+        int mid = W / 2;
+        drawFootSoldier(g2, mid - 26, ground + 2, true,  false, true, false, whiteShield, whiteArmour);
+        drawFootSoldier(g2, mid + 14, ground + 2, false, false, true, false, blackShield, blackArmour);
+        drawClashSparks(g2, mid - 4, ground - 28);
+
+        // Fallen soldiers
+        drawFallenSoldier(g2, (int)(W * 0.38f), ground + 2);
+        drawFallenSoldier(g2, (int)(W * 0.62f), ground + 2);
+
+        // Arrows in ground
+        drawArrowInGround(g2, (int)(W*0.28f), ground + 4, -65);
+        drawArrowInGround(g2, (int)(W*0.55f), ground + 2, -80);
+        drawArrowInGround(g2, (int)(W*0.67f), ground + 5, -70);
+
+        // Vignette
+        RadialGradientPaint vignette = new RadialGradientPaint(
+            new java.awt.geom.Point2D.Float(W / 2f, H / 2f),
+            Math.max(W, H) * 0.72f,
+            new float[]{0.4f, 1.0f},
+            new Color[]{new Color(0,0,0,0), new Color(0,0,0,180)});
+        g2.setPaint(vignette);
+        g2.fillRect(0, 0, W, H);
+
+        // Dark wash for readability
+        g2.setPaint(new Color(0, 0, 0, 70));
+        g2.fillRect(0, 0, W, H);
+
+        // Gold border
+        g2.setColor(new Color(190, 140, 45, 180));
+        g2.setStroke(new BasicStroke(3f));
+        g2.drawRect(4, 4, W - 9, H - 9);
+        g2.setColor(new Color(190, 140, 45, 80));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawRect(9, 9, W - 19, H - 19);
+        for (int[] c : new int[][]{{4,4},{W-20,4},{4,H-20},{W-20,H-20}}) {
+            g2.setColor(new Color(200, 160, 60, 200));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawOval(c[0], c[1], 16, 16);
+        }
+    }
+
+    private void drawSmoke(Graphics2D g2, int x, int y) {
+        for (int i = 0; i < 6; i++) {
+            int alpha = 80 - i * 12;
+            int r = 10 + i * 8;
+            int ox = (i % 2 == 0) ? -3 : 4;
+            g2.setColor(new Color(30, 25, 20, Math.max(alpha, 5)));
+            g2.fillOval(x - r/2 + ox, y - i * 18 - r/2, r, r);
+        }
+    }
+
+    private void drawClashSparks(Graphics2D g2, int x, int y) {
+        Color[] sparkColors = {
+            new Color(255, 230, 50, 220),
+            new Color(255, 160, 20, 180),
+            new Color(255, 255, 200, 200)
+        };
+        int[][] sparks = {{-12,-8},{-7,-14},{0,-16},{8,-13},{13,-7},{-5,-4},{6,-5},{-9,-3},{10,-2}};
+        g2.setStroke(new BasicStroke(1.5f));
+        for (int i = 0; i < sparks.length; i++) {
+            g2.setColor(sparkColors[i % sparkColors.length]);
+            int sx = x + sparks[i][0], sy = y + sparks[i][1];
+            g2.drawLine(x, y, sx, sy);
+            g2.fillOval(sx - 2, sy - 2, 4, 4);
+        }
+    }
+
+    private void drawArrowInGround(Graphics2D g2, int x, int y, int angleDeg) {
+        Graphics2D g3 = (Graphics2D) g2.create();
+        g3.translate(x, y);
+        g3.rotate(Math.toRadians(angleDeg));
+        g3.setColor(new Color(100, 70, 30));
+        g3.setStroke(new BasicStroke(2f));
+        g3.drawLine(0, 0, 0, -22);
+        g3.setColor(new Color(160, 160, 170));
+        int[] ax = {-3, 0, 3}, ay = {-22, -28, -22};
+        g3.fillPolygon(ax, ay, 3);
+        g3.setColor(new Color(180, 50, 30));
+        g3.drawLine(-3, -4, 0, 0);
+        g3.drawLine( 3, -4, 0, 0);
+        g3.dispose();
+    }
+
+    private void drawFallenSoldier(Graphics2D g2, int x, int y) {
+        g2.setColor(new Color(25, 18, 10, 200));
+        g2.fillOval(x, y - 5, 28, 10);
+        g2.fillOval(x + 22, y - 8, 10, 10);
+        g2.setStroke(new BasicStroke(3f));
+        g2.drawLine(x + 6, y - 2, x - 4, y + 4);
+        g2.setColor(new Color(130, 130, 140, 160));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawLine(x - 6, y + 3, x + 14, y - 1);
+    }
+
+    private void drawFootSoldier(Graphics2D g2, int x, int groundY,
+                                  boolean facingRight,
+                                  boolean hasAxe, boolean hasSword, boolean hasSpear,
+                                  Color shieldColor, Color armourColor) {
+        int dir = facingRight ? 1 : -1;
+
+        // Legs
+        g2.setColor(armourColor.darker());
+        g2.setStroke(new BasicStroke(3f));
+        g2.drawLine(x,     groundY - 6, x - dir*3, groundY);
+        g2.drawLine(x,     groundY - 6, x + dir*3, groundY);
+
+        // Torso
+        g2.setColor(armourColor);
+        g2.fillRoundRect(x - 5, groundY - 22, 10, 16, 3, 3);
+
+        // Shield
+        int shieldX = x - dir * 9;
+        g2.setColor(shieldColor);
+        g2.fillRoundRect(shieldX - 4, groundY - 26, 9, 18, 3, 3);
+        g2.setColor(shieldColor.darker());
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawRoundRect(shieldX - 4, groundY - 26, 9, 18, 3, 3);
+        g2.setColor(new Color(200, 170, 60));
+        g2.fillOval(shieldX - 2, groundY - 18, 5, 5);
+
+        // Face + helmet
+        g2.setColor(new Color(200, 180, 130));
+        g2.fillOval(x - 5, groundY - 34, 10, 10);
+        g2.setColor(armourColor.brighter());
+        g2.fillRect(x - 5, groundY - 36, 10, 7);
+        g2.fillRect(x - 6, groundY - 36, 12, 3);
+        g2.setColor(armourColor);
+        g2.fillRect(x - 1, groundY - 33, 2, 5);
+
+        // Weapon arm
+        int armStartX = x + dir * 5;
+        int armStartY = groundY - 18;
+
+        if (hasSpear) {
+            int spearTipX = armStartX + dir * 22;
+            int spearTipY = armStartY - 30;
+            g2.setColor(new Color(110, 80, 40));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawLine(armStartX, armStartY, spearTipX, spearTipY);
+            g2.setColor(new Color(170, 170, 180));
+            int[] sx = {spearTipX - 3, spearTipX,      spearTipX + 3};
+            int[] sy = {spearTipY + 4, spearTipY - 10, spearTipY + 4};
+            g2.fillPolygon(sx, sy, 3);
+        } else if (hasSword) {
+            g2.setColor(new Color(110, 80, 40));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawLine(armStartX, armStartY, armStartX + dir*4, armStartY - 8);
+            g2.setColor(new Color(190, 190, 200));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawLine(armStartX + dir*4, armStartY - 8, armStartX + dir*10, armStartY - 28);
+            g2.setColor(new Color(160, 130, 50));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawLine(armStartX + dir*2, armStartY - 6, armStartX + dir*6, armStartY - 10);
+        } else if (hasAxe) {
+            int axeEndX = armStartX + dir * 16;
+            int axeEndY = armStartY - 20;
+            g2.setColor(new Color(100, 70, 30));
+            g2.setStroke(new BasicStroke(2.5f));
+            g2.drawLine(armStartX, armStartY, axeEndX, axeEndY);
+            g2.setColor(new Color(160, 160, 170));
+            int[] ax2 = {axeEndX - 2, axeEndX + dir*8, axeEndX + dir*8, axeEndX - 2};
+            int[] ay2 = {axeEndY - 10, axeEndY - 14, axeEndY + 2, axeEndY - 2};
+            g2.fillPolygon(ax2, ay2, 4);
+        }
+    }
+
+    private void drawHorseman(Graphics2D g2, int x, int groundY,
+                               boolean facingRight, Color armourColor, boolean withSpear) {
+        int dir = facingRight ? 1 : -1;
+        Color horseColor = new Color(80, 50, 25);
+        Color hairColor  = new Color(40, 25, 10);
+
+        // Horse body
+        g2.setColor(horseColor);
+        g2.fillOval(x - 20, groundY - 32, 44, 22);
+        int[] neckX = {x + dir*10, x + dir*18, x + dir*22, x + dir*14};
+        int[] neckY = {groundY - 38, groundY - 40, groundY - 28, groundY - 26};
+        g2.fillPolygon(neckX, neckY, 4);
+        g2.fillOval(x + dir*16, groundY - 44, 14, 12);
+        g2.setColor(new Color(50, 30, 15));
+        g2.fillOval(x + dir*22, groundY - 37, 3, 3);
+        g2.setColor(new Color(20, 10, 5));
+        g2.fillOval(x + dir*21, groundY - 43, 3, 3);
+        g2.setColor(hairColor);
+        g2.setStroke(new BasicStroke(2f));
+        for (int m = 0; m < 4; m++) {
+            g2.drawLine(x + dir*(12+m*2), groundY - 40 - m,
+                        x + dir*(10+m*2), groundY - 48 - m*2);
+        }
+        g2.drawLine(x - dir*19, groundY - 30, x - dir*26, groundY - 38);
+        g2.drawLine(x - dir*19, groundY - 30, x - dir*28, groundY - 30);
+        g2.drawLine(x - dir*19, groundY - 30, x - dir*25, groundY - 22);
+        g2.setColor(horseColor.darker());
+        g2.setStroke(new BasicStroke(4f));
+        g2.drawLine(x - 10, groundY - 16, x - 14, groundY);
+        g2.drawLine(x - 5,  groundY - 16, x + 2,  groundY);
+        g2.drawLine(x + 8,  groundY - 16, x + 4,  groundY);
+        g2.drawLine(x + 14, groundY - 16, x + 20, groundY);
+        g2.setColor(new Color(30, 20, 10));
+        for (int hx2 : new int[]{x-14, x+2, x+4, x+20}) g2.fillOval(hx2-3, groundY-3, 6, 5);
+        g2.setColor(armourColor.darker());
+        g2.fillOval(x - 4, groundY - 40, 20, 12);
+
+        // Rider
+        int rX = x + dir * 2, rY = groundY - 50;
+        g2.setColor(armourColor);
+        g2.fillRoundRect(rX - 6, rY - 14, 12, 16, 3, 3);
+        g2.setColor(armourColor.darker());
+        g2.setStroke(new BasicStroke(4f));
+        g2.drawLine(rX - 3, rY + 2, rX - 12, rY + 14);
+        g2.drawLine(rX + 3, rY + 2, rX + 12, rY + 14);
+        g2.setColor(new Color(200, 175, 130));
+        g2.fillOval(rX - 5, rY - 26, 10, 10);
+        g2.setColor(new Color(130, 130, 145));
+        g2.fillRect(rX - 5, rY - 28, 10, 8);
+        g2.fillRect(rX - 7, rY - 28, 14, 3);
+        g2.fillRect(rX - 1, rY - 25, 2, 5);
+
+        if (withSpear) {
+            int spearEndX = rX + dir * 40, spearEndY = rY - 5;
+            int spearButX = rX - dir * 15, spearButY = rY;
+            g2.setColor(new Color(110, 80, 35));
+            g2.setStroke(new BasicStroke(2.5f));
+            g2.drawLine(spearButX, spearButY, spearEndX, spearEndY);
+            g2.setColor(new Color(180, 180, 190));
+            int[] spx = {spearEndX - dir*3, spearEndX + dir*10, spearEndX - dir*3};
+            int[] spy = {spearEndY - 4, spearEndY, spearEndY + 4};
+            g2.fillPolygon(spx, spy, 3);
+        } else {
+            g2.setColor(new Color(100, 75, 30));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawLine(rX + dir*6, rY - 14, rX + dir*14, rY - 32);
+            g2.setColor(new Color(185, 185, 200));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawLine(rX + dir*14, rY - 32, rX + dir*18, rY - 46);
+            g2.setColor(new Color(160, 130, 50));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawLine(rX + dir*10, rY - 26, rX + dir*18, rY - 30);
+        }
+
+        // Shield on off-arm
+        int sX = rX - dir * 9;
+        g2.setColor(armourColor);
+        g2.fillRoundRect(sX - 5, rY - 20, 10, 18, 4, 4);
+        g2.setColor(armourColor.darker());
+        g2.setStroke(new BasicStroke(1.2f));
+        g2.drawRoundRect(sX - 5, rY - 20, 10, 18, 4, 4);
+        g2.setColor(new Color(200, 165, 55));
+        g2.fillOval(sX - 2, rY - 12, 5, 5);
+    }
+
+    // ── Everything below is UNCHANGED ────────────────────────────────────────
+
     private void attemptMove(int fromRow, int fromCol, int toRow, int toCol) {
         if (out == null) {
             logArea.append("System: Not connected yet.\n");
             return;
         }
-        
+
         Piece p = game.board[fromRow][fromCol];
-        if (p == null){
-            return;
-        } 
+        if (p == null) return;
         boolean isWhite = p.isWhite;
-        
+
         Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
         boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite, player.isInCheck);
-        
+
         if (!canMove) {
             logArea.append("Invalid move\n");
         } else {
@@ -85,23 +451,22 @@ public class GUI extends JFrame {
             if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
                 String prompt = "Promote to (Q/R/B/N):";
                 while (true) {
-                    pawnPromotion= JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                    if (pawnPromotion == null) { 
-                        pawnPromotion = "Q"; break; 
-                    }
+                    pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
+                    if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
                     pawnPromotion = pawnPromotion.trim().toUpperCase();
-                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") || pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
+                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
+                        pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
                     prompt = "Invalid piece type. Promote to (Q/R/B/N):";
                 }
             }
-            
+
             String message = fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
-            
+
             game.Move(fromRow, fromCol, toRow, toCol, isWhite);
             if (!pawnPromotion.equals("None")) {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
             }
-            
+
             Piece king = game.getKing(!isWhite);
             if (game.isInCheck(king.row, king.col, !isWhite)) {
                 logArea.append("Check!\n");
@@ -109,7 +474,7 @@ public class GUI extends JFrame {
             } else {
                 message += ",false";
             }
-            
+
             out.println(message);
             if (out.checkError()) {
                 logArea.append("System: Send failed, connection lost.\n");
@@ -123,7 +488,6 @@ public class GUI extends JFrame {
 
     private void startNetwork(boolean isServer, String ip) {
         this.isServer = isServer;
-        //switch page
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         new Thread(() -> {
             try {
@@ -137,7 +501,6 @@ public class GUI extends JFrame {
                 }
                 out = new PrintWriter(s.getOutputStream(), true);
                 logArea.append("System: Connected!\n");
-                //recive
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
@@ -150,10 +513,10 @@ public class GUI extends JFrame {
                     try {
                         int fromRow = Integer.parseInt(parts[0]);
                         int fromCol = Integer.parseInt(parts[1]);
-                        int toRow = Integer.parseInt(parts[2]);
-                        int toCol = Integer.parseInt(parts[3]);
+                        int toRow   = Integer.parseInt(parts[2]);
+                        int toCol   = Integer.parseInt(parts[3]);
                         boolean isWhite = Boolean.parseBoolean(parts[4]);
-                        String pawnPromotion= parts[5];
+                        String pawnPromotion = parts[5];
                         boolean isCheck = Boolean.parseBoolean(parts[6]);
                         SwingUtilities.invokeLater(() -> {
                             logArea.append("Moved:" + message + "\n");
@@ -183,9 +546,9 @@ public class GUI extends JFrame {
             }
         }).start();
     }
-    
-    public static void main(String[] args) { 
-            new GUI(); 
+
+    public static void main(String[] args) {
+        new GUI();
     }
 
     private class ActiveBoardPanel extends JPanel {
@@ -195,27 +558,17 @@ public class GUI extends JFrame {
         private int selectedRow = -1;
         private int selectedCol = -1;
 
-        public ActiveBoardPanel(){
+        public ActiveBoardPanel() {
             loadImages();
-
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mousePressed(java.awt.event.MouseEvent e) {
-                    if (game == null || out == null){
-                        return;
-                    } 
-                    
-                    int w = getWidth();
-                    int h = getHeight();
+                    if (game == null || out == null) return;
+                    int w = getWidth(), h = getHeight();
                     int sq = Math.min(w, h) / 8;
-                    
                     int col = e.getX() / sq;
                     int row = e.getY() / sq;
-                    
-                    if (col >= 8 || row >= 8){
-                        return; // Prevent out of bounds clicks
-                    }
-                    
+                    if (col >= 8 || row >= 8) return;
                     if (selectedRow == -1) {
                         Piece p = game.board[row][col];
                         if (p != null && p.isWhite == game.whiteTurn && p.isWhite == isServer) {
@@ -224,7 +577,6 @@ public class GUI extends JFrame {
                             repaint();
                         }
                     } else {
-                        // Deselect if clicking the same square
                         if (selectedRow == row && selectedCol == col) {
                             selectedRow = -1;
                             selectedCol = -1;
@@ -240,19 +592,18 @@ public class GUI extends JFrame {
             });
         }
 
-        private void loadImages(){
+        private void loadImages() {
             String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
             String[] colors = {"White", "Black"};
-
-            try{
-                for(String pieceColor: colors){
-                    for(String pieceType: pieces){
+            try {
+                for (String pieceColor : colors) {
+                    for (String pieceType : pieces) {
                         String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
                         Image imagePiece = ImageIO.read(new File(fileName));
                         pieceImages.put(pieceColor + pieceType, imagePiece);
                     }
                 }
-            } catch(IOException e){
+            } catch (IOException e) {
                 System.out.println("Error loading images: " + e.getMessage());
             }
         }
@@ -262,23 +613,18 @@ public class GUI extends JFrame {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            int w = getWidth();
-            int h = getHeight();
+            int w = getWidth(), h = getHeight();
             int sq = Math.min(w, h) / 8;
-
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
                     g2.setColor((row + col) % 2 == 0 ? light : dark);
                     g2.fillRect(col * sq, row * sq, sq, sq);
                 }
             }
-
             if (selectedRow != -1 && selectedCol != -1) {
-                g2.setColor(new Color(255, 255, 50, 120)); 
+                g2.setColor(new Color(255, 255, 50, 120));
                 g2.fillRect(selectedCol * sq, selectedRow * sq, sq, sq);
             }
-
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
@@ -294,7 +640,6 @@ public class GUI extends JFrame {
                     }
                 }
             }
-        }  
+        }
     }
 }
-
