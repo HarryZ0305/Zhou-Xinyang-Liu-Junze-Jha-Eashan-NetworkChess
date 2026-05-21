@@ -56,7 +56,11 @@ public class GUI extends JFrame {
                 BorderFactory.createLineBorder(new Color(200, 160, 80), 2),
                 BorderFactory.createEmptyBorder(6, 18, 6, 18)
             ));
-            btn.setOpaque(true);
+    
+            // Add these two lines:
+            btn.setContentAreaFilled(false); 
+            btn.setOpaque(false); 
+    
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
