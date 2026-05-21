@@ -24,7 +24,6 @@ public class GUI extends JFrame {
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        //  menu: custom-painted battle background 
         JPanel menu = new JPanel(new GridBagLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -75,7 +74,6 @@ public class GUI extends JFrame {
         activeBoard = new ActiveBoardPanel();
         logArea.setEditable(false);
         
-        //Text area auto-scroll to the bottom when new text is added
         ((javax.swing.text.DefaultCaret)logArea.getCaret()).setUpdatePolicy(javax.swing.text.DefaultCaret.ALWAYS_UPDATE);
         
         JScrollPane logScroll = new JScrollPane(logArea);
@@ -98,10 +96,6 @@ public class GUI extends JFrame {
         setVisible(true);
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    //  BATTLE SCENE BACKGROUND
-    // ══════════════════════════════════════════════════════════════════════
-
     private void drawBattleBackground(Graphics2D g2, int W, int H) {
         if (W == 0 || H == 0){  //RadialGradientPaint throws if radius <= 0
             return;
@@ -111,14 +105,12 @@ public class GUI extends JFrame {
 
         int ground = (int)(H * 0.72f);
 
-        // Sky: blood-orange dusk
         GradientPaint sky = new GradientPaint(
             0, 0,      new Color(20, 10, 5),
             0, ground, new Color(185, 65, 10));
         g2.setPaint(sky);
         g2.fillRect(0, 0, W, H);
 
-        // Sun low on horizon
         int sunX = (int)(W * 0.72f), sunY = ground - 18;
         g2.setColor(new Color(220, 60, 20, 180));
         g2.fillOval(sunX - 30, sunY - 30, 60, 60);
@@ -128,19 +120,16 @@ public class GUI extends JFrame {
             g2.drawOval(sunX - 30 - r*10, sunY - 30 - r*10, 60 + r*20, 60 + r*20);
         }
 
-        // Smoke plumes
         drawSmoke(g2, (int)(W*0.12f), ground - 10);
         drawSmoke(g2, (int)(W*0.85f), ground - 8);
         drawSmoke(g2, (int)(W*0.35f), ground - 5);
 
-        // Ground
         GradientPaint gnd = new GradientPaint(
             0, ground, new Color(45, 32, 12),
             0, H,      new Color(22, 15, 5));
         g2.setPaint(gnd);
         g2.fillRect(0, ground, W, H - ground);
 
-        // Ground texture
         g2.setColor(new Color(30, 20, 8, 100));
         g2.setStroke(new BasicStroke(1f));
         int[][] tufts = {{40,8},{110,14},{190,6},{280,11},{360,7},{430,13},{80,18},{230,16},{400,9}};
@@ -150,14 +139,12 @@ public class GUI extends JFrame {
             g2.drawLine(tx + 4, ty, tx + 12, ty - 5);
         }
 
-        // Distant hill silhouette
         g2.setColor(new Color(35, 20, 8, 160));
         int[] hx = {0, W/6, W/4, W*2/5, W/2, W*3/5, W*3/4, W*5/6, W, W, 0};
         int[] hy = {ground, ground-28, ground-40, ground-22, ground-50,
                     ground-30, ground-44, ground-18, ground-35, H, H};
         g2.fillPolygon(hx, hy, hx.length);
 
-        // ── LEFT ARMY: white shields, light grey armour ──────────────────
         Color whiteShield = new Color(230, 230, 230);
         Color whiteArmour = new Color(180, 180, 190);
         int[] leftXs = {20, 55, 90, 130, 168, 210};
@@ -171,7 +158,6 @@ public class GUI extends JFrame {
         drawHorseman(g2, (int)(W * 0.09f), ground,     true, whiteArmour, true);
         drawHorseman(g2, (int)(W * 0.20f), ground - 4, true, whiteArmour, false);
 
-        // ── RIGHT ARMY: black shields, dark grey armour ──────────────────
         Color blackShield = new Color(30, 30, 30);
         Color blackArmour = new Color(55, 55, 60);
         int[] rightXs = {480, 445, 410, 370, 330, 295};
@@ -185,22 +171,18 @@ public class GUI extends JFrame {
         drawHorseman(g2, (int)(W * 0.91f), ground,     false, blackArmour, false);
         drawHorseman(g2, (int)(W * 0.79f), ground - 4, false, blackArmour, true);
 
-        // ── Centre clash ─────────────────────────────────────────────────
         int mid = W / 2;
         drawFootSoldier(g2, mid - 26, ground + 2, true,  false, true, false, whiteShield, whiteArmour);
         drawFootSoldier(g2, mid + 14, ground + 2, false, false, true, false, blackShield, blackArmour);
         drawClashSparks(g2, mid - 4, ground - 28);
 
-        // Fallen soldiers
         drawFallenSoldier(g2, (int)(W * 0.38f), ground + 2);
         drawFallenSoldier(g2, (int)(W * 0.62f), ground + 2);
 
-        // Arrows in ground
         drawArrowInGround(g2, (int)(W*0.28f), ground + 4, -65);
         drawArrowInGround(g2, (int)(W*0.55f), ground + 2, -80);
         drawArrowInGround(g2, (int)(W*0.67f), ground + 5, -70);
 
-        // Vignette
         RadialGradientPaint vignette = new RadialGradientPaint(
             new java.awt.geom.Point2D.Float(W / 2f, H / 2f),
             Math.max(W, H) * 0.72f,
@@ -209,11 +191,9 @@ public class GUI extends JFrame {
         g2.setPaint(vignette);
         g2.fillRect(0, 0, W, H);
 
-        // Dark wash for readability
         g2.setPaint(new Color(0, 0, 0, 70));
         g2.fillRect(0, 0, W, H);
 
-        // Gold border
         g2.setColor(new Color(190, 140, 45, 180));
         g2.setStroke(new BasicStroke(3f));
         g2.drawRect(4, 4, W - 9, H - 9);
@@ -286,17 +266,14 @@ public class GUI extends JFrame {
                                   Color shieldColor, Color armourColor) {
         int dir = facingRight ? 1 : -1;
 
-        // Legs
         g2.setColor(armourColor.darker());
         g2.setStroke(new BasicStroke(3f));
         g2.drawLine(x,     groundY - 6, x - dir*3, groundY);
         g2.drawLine(x,     groundY - 6, x + dir*3, groundY);
 
-        // Torso
         g2.setColor(armourColor);
         g2.fillRoundRect(x - 5, groundY - 22, 10, 16, 3, 3);
 
-        // Shield
         int shieldX = x - dir * 9;
         g2.setColor(shieldColor);
         g2.fillRoundRect(shieldX - 4, groundY - 26, 9, 18, 3, 3);
@@ -306,7 +283,6 @@ public class GUI extends JFrame {
         g2.setColor(new Color(200, 170, 60));
         g2.fillOval(shieldX - 2, groundY - 18, 5, 5);
 
-        // Face + helmet
         g2.setColor(new Color(200, 180, 130));
         g2.fillOval(x - 5, groundY - 34, 10, 10);
         g2.setColor(armourColor.brighter());
@@ -315,7 +291,6 @@ public class GUI extends JFrame {
         g2.setColor(armourColor);
         g2.fillRect(x - 1, groundY - 33, 2, 5);
 
-        // Weapon arm
         int armStartX = x + dir * 5;
         int armStartY = groundY - 18;
 
@@ -358,7 +333,6 @@ public class GUI extends JFrame {
         Color horseColor = new Color(80, 50, 25);
         Color hairColor  = new Color(40, 25, 10);
 
-        // Horse body
         g2.setColor(horseColor);
         g2.fillOval(x - 20, groundY - 32, 44, 22);
         int[] neckX = {x + dir*10, x + dir*18, x + dir*22, x + dir*14};
@@ -389,7 +363,6 @@ public class GUI extends JFrame {
         g2.setColor(armourColor.darker());
         g2.fillOval(x - 4, groundY - 40, 20, 12);
 
-        // Rider
         int rX = x + dir * 2, rY = groundY - 50;
         g2.setColor(armourColor);
         g2.fillRoundRect(rX - 6, rY - 14, 12, 16, 3, 3);
@@ -426,7 +399,6 @@ public class GUI extends JFrame {
             g2.drawLine(rX + dir*10, rY - 26, rX + dir*18, rY - 30);
         }
 
-        // Shield on off-arm
         int sX = rX - dir * 9;
         g2.setColor(armourColor);
         g2.fillRoundRect(sX - 5, rY - 20, 10, 18, 4, 4);
@@ -436,8 +408,6 @@ public class GUI extends JFrame {
         g2.setColor(new Color(200, 165, 55));
         g2.fillOval(sX - 2, rY - 12, 5, 5);
     }
-
-    // ── Everything below is UNCHANGED ────────────────────────────────────────
 
     private void attemptMove(int fromRow, int fromCol, int toRow, int toCol) {
         if (out == null) {
@@ -475,7 +445,6 @@ public class GUI extends JFrame {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
             }
 
-            // Mover is no longer in check (canMove already enforced that).
             Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
             mover.isInCheck = false;
 
