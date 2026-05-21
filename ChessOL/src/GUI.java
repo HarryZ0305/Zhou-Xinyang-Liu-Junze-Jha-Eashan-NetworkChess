@@ -74,7 +74,17 @@ public class GUI extends JFrame {
 
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
-            if (ip != null) startNetwork(false, ip, 8888);
+            if (ip != null) {
+                String portStr = JOptionPane.showInputDialog("Connect to Port:", "8888");
+                if (portStr != null) {
+                    try {
+                        int port = Integer.parseInt(portStr);
+                        startNetwork(false, ip, port);
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(this, "Invalid Port Number.");
+                    }
+                }
+            }
         });
         btnBot.addActionListener(e -> startBotGame());
 
