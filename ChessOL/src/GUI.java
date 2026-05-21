@@ -16,6 +16,8 @@ public class GUI extends JFrame {
     Game game = new Game();
     ActiveBoardPanel activeBoard;
     private boolean isServer;
+    private boolean gameOver = false;
+    private Socket currentSocket;
     private boolean playingWhite = true;
 
     public GUI() {
@@ -474,11 +476,42 @@ public class GUI extends JFrame {
         Piece king = game.getKing(sideToMove);
         boolean inCheck = game.isInCheck(king.row, king.col, sideToMove);
         boolean hasMove = game.hasLegalMove(sideToMove);
+        
+        String endMessage = null;
         if (!hasMove && inCheck) {
             String winner = sideToMove ? "Black" : "White";
-            logArea.append("Checkmate! " + winner + " wins.\n");
+            endMessage = "Checkmate! " + winner + " wins.";
         } else if (!hasMove) {
-            logArea.append("Stalemate. Draw.\n");
+            endMessage = "Stalemate. Draw.";
+        }
+
+        if (endMessage != null) {
+            logArea.append(endMessage + "\n");
+            gameOver = true; //Lock the board
+
+            //Use invokeLater so the final move paints on the board beofre the popup shows
+            final String msg = endMessage;
+            SwingUtilities.invokeLater(() -> {
+                int choice = JOptionPane.showOptionDialog(this,
+                    msg + "\nWhat would you like to do?",
+                    "Game Over",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    new String[]{"Rematch", "Main Menu"},
+                    "Rematch");
+
+                if (choice == JOptionPane.YES_OPTION) {
+                    //Reset game for a rematch
+                    game = new Game();
+                    gameOver = false;
+                    logArea.append("System: Starting a new game...\n");
+                    activeBoard.repaint();
+                } else {
+                    //Disconnect and go back to home screen
+                    returnToMenu();
+                }
+            });
         }
     }
 
@@ -683,5 +716,17 @@ public class GUI extends JFrame {
                 }
             }
         }
+    }
+
+    private void returnToMenu() {
+        try {
+            if (out != null) out.close();
+            if (currentSocket != null) currentSocket.close();
+        } catch (Exception ex) {
+            System.out.println("Error closing socket: " + ex.getMessage());
+        }
+        out = null;
+        currentSocket = null;
+        ((CardLayout)cards.getLayout()).show(cards, "MENU");
     }
 }
