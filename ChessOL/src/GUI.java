@@ -59,7 +59,18 @@ public class GUI extends JFrame {
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
-        btnServer.addActionListener(e -> startNetwork(true, null));
+        btnServer.addActionListener(e -> {
+            String portStr = JOptionPane.showInputDialog("Host on Port:", "8888");
+            if (portStr != null) {
+                try {
+                    int port = Integer.parseInt(portStr);
+                    startNetwork(true, null, port); // Update your startNetwork method to accept a port parameter!
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid Port Number.");
+                }
+            }
+        });
+        
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
