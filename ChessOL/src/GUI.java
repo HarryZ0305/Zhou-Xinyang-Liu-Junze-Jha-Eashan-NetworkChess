@@ -14,10 +14,10 @@ public class GUI extends JFrame {
     private PrintWriter out;
     Game game = new Game();
     ActiveBoardPanel activeBoard;
-    private boolean isServer;
     private boolean gameOver = false;
     private Socket currentSocket;
-    private boolean playingWhite = true; 
+    private boolean playingWhite = true;
+    private boolean vsBot = false;
 
     public GUI() {
         setTitle("ChessOL");
@@ -45,8 +45,9 @@ public class GUI extends JFrame {
 
         JButton btnServer = new JButton("Server");
         JButton btnClient = new JButton("Client");
+        JButton btnBot    = new JButton("Play with Bot");
 
-        for (JButton btn : new JButton[]{btnServer, btnClient}) {
+        for (JButton btn : new JButton[]{btnServer, btnClient, btnBot}) {
             btn.setBackground(new Color(60, 30, 10, 200));
             btn.setForeground(new Color(255, 235, 180));
             btn.setFont(new Font("Serif", Font.BOLD, 16));
@@ -64,11 +65,14 @@ public class GUI extends JFrame {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
         });
+        btnBot.addActionListener(e -> startBotGame());
 
         gbc.gridwidth = 1; gbc.gridy = 1; gbc.gridx = 0;
         menu.add(btnServer, gbc);
         gbc.gridx = 1;
         menu.add(btnClient, gbc);
+        gbc.gridwidth = 2; gbc.gridy = 2; gbc.gridx = 0;
+        menu.add(btnBot, gbc);
 
         JPanel workPanel = new JPanel(new BorderLayout());
         activeBoard = new ActiveBoardPanel();
@@ -410,7 +414,7 @@ public class GUI extends JFrame {
     }
 
     private void attemptMove(int fromRow, int fromCol, int toRow, int toCol) {
-        if (out == null) {
+        if (!vsBot && out == null) {
             logArea.append("System: Not connected yet.\n");
             return;
         }
@@ -419,50 +423,84 @@ public class GUI extends JFrame {
         if (p == null) return;
         boolean isWhite = p.isWhite;
 
-        Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
-        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
-
-        if (!canMove) {
+        if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
             logArea.append("Invalid move\n");
+            return;
+        }
+
+        String pawnPromotion = "None";
+        if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
+            String prompt = "Promote to (Q/R/B/N):";
+            while (true) {
+                pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
+                if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
+                pawnPromotion = pawnPromotion.trim().toUpperCase();
+                if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
+                    pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
+                prompt = "Invalid piece type. Promote to (Q/R/B/N):";
+            }
+        }
+
+        game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+        if (!pawnPromotion.equals("None")) {
+            game.promotion(toRow, toCol, isWhite, pawnPromotion);
+        }
+
+        Piece king = game.getKing(!isWhite);
+        boolean givesCheck = game.isInCheck(king.row, king.col, !isWhite);
+        if (givesCheck) logArea.append("Check!\n");
+
+        game.whiteTurn = !game.whiteTurn;
+        activeBoard.repaint();
+        announceEndIfOver();
+
+        if (vsBot) {
+            if (!gameOver) triggerBotMove();
         } else {
-            String pawnPromotion = "None";
-            if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-                String prompt = "Promote to (Q/R/B/N):";
-                while (true) {
-                    pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                    if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
-                    pawnPromotion = pawnPromotion.trim().toUpperCase();
-                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
-                        pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
-                    prompt = "Invalid piece type. Promote to (Q/R/B/N):";
-                }
-            }
-
-            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
-            
-            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
-            if (!pawnPromotion.equals("None")) {
-                game.promotion(toRow, toCol, isWhite, pawnPromotion);
-            }
-
-            Piece king = game.getKing(!isWhite);
-            if (game.isInCheck(king.row, king.col, !isWhite)) {
-                logArea.append("Check!\n");
-                message += ",true";
-            } else {
-                message += ",false";
-            }
-
+            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol
+                           + "," + isWhite + "," + pawnPromotion + "," + givesCheck;
             out.println(message);
-            if (out.checkError()) {
-                logArea.append("System: Send failed, connection lost.\n");
-            } else {
-                logArea.append("Moved: " + message + "\n");
+            if (out.checkError()) logArea.append("System: Send failed, connection lost.\n");
+            else logArea.append("Moved: " + message + "\n");
+        }
+    }
+
+    private void startBotGame() {
+        vsBot = true;
+        playingWhite = true;
+        game = new Game();
+        gameOver = false;
+        logArea.setText("");
+        ((CardLayout)cards.getLayout()).show(cards, "WORK");
+        logArea.append("Game started! You are White. Bot is thinking as Black...\n");
+        activeBoard.repaint();
+    }
+
+    private void triggerBotMove() {
+        new Thread(() -> {
+            SwingUtilities.invokeLater(() -> logArea.append("Bot is thinking...\n"));
+            int[] move = GeminiBot.getMove(game.board);
+            SwingUtilities.invokeLater(() -> {
+                if (move == null) {
+                    logArea.append("Bot failed to respond.\n");
+                    return;
+                }
+                int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
+                if (!game.canMove(fR, fC, tR, tC, false)) {
+                    logArea.append("Bot made an illegal move.\n");
+                    return;
+                }
+                String promo = "None";
+                if (move[4] != -1) promo = String.valueOf((char) move[4]);
+                game.Move(fR, fC, tR, tC, false);
+                if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
+                Piece king = game.getKing(true);
+                if (game.isInCheck(king.row, king.col, true)) logArea.append("Check!\n");
                 game.whiteTurn = !game.whiteTurn;
                 activeBoard.repaint();
                 announceEndIfOver();
-            }
-        }
+            });
+        }).start();
     }
 
     private void announceEndIfOver() {
@@ -506,9 +544,7 @@ public class GUI extends JFrame {
     }
 
     private void startNetwork(boolean isServer, String ip) {
-        this.isServer = isServer;
-
-        game = new Game(); 
+        game = new Game();
         gameOver = false;
         logArea.setText("");
 
