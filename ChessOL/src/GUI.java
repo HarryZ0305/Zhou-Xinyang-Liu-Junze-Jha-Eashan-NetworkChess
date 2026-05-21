@@ -516,6 +516,11 @@ public class GUI extends JFrame {
 
     private void startNetwork(boolean isServer, String ip) {
         this.isServer = isServer;
+
+        game = new Game(); 
+        gameOver = false;
+        logArea.setText("");
+
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         new Thread(() -> {
             try {
@@ -605,7 +610,9 @@ public class GUI extends JFrame {
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mousePressed(java.awt.event.MouseEvent e) {
-                    if (game == null || out == null) return;
+                    if (game == null || out == null || gameOver){
+                        return;
+                    } 
                     int w = getWidth(), h = getHeight();
                     int sq = Math.min(w, h) / 8;
                     int displayCol = e.getX() / sq;
