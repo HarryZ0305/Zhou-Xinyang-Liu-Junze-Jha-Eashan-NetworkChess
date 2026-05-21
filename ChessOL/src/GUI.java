@@ -70,7 +70,7 @@ public class GUI extends JFrame {
                 }
             }
         });
-        
+
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
@@ -430,23 +430,28 @@ public class GUI extends JFrame {
         if (p == null) return;
         boolean isWhite = p.isWhite;
 
-        Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
         boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
 
         if (!canMove) {
             logArea.append("Invalid move\n");
         } else {
             String pawnPromotion = "None";
+            // Visual Pawn Promotion Handling
             if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-                String prompt = "Promote to (Q/R/B/N):";
-                while (true) {
-                    pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                    if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
-                    pawnPromotion = pawnPromotion.trim().toUpperCase();
-                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
-                        pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
-                    prompt = "Invalid piece type. Promote to (Q/R/B/N):";
-                }
+                String[] options = {"Queen", "Rook", "Bishop", "Knight"};
+                int choice = JOptionPane.showOptionDialog(this,
+                    "Choose a piece to promote to:",
+                    "Pawn Promotion",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+
+                if (choice == 1) pawnPromotion = "R";
+                else if (choice == 2) pawnPromotion = "B";
+                else if (choice == 3) pawnPromotion = "N";
+                else pawnPromotion = "Q"; //Default to Queen 
             }
 
             String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
