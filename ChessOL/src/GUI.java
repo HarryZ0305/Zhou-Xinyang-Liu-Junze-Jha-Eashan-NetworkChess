@@ -624,9 +624,6 @@ public class GUI extends JFrame {
         }).start();
     }
 
-    public static void main(String[] args) {
-        new GUI();
-    }
 
     private class ActiveBoardPanel extends JPanel {
         private static final Color light = new Color(240, 217, 181);
