@@ -22,7 +22,7 @@ public class GUI extends JFrame {
         setSize(500, 400);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // ── menu: custom-painted battle background ──────────────────────────
+        //  menu: custom-painted battle background 
         JPanel menu = new JPanel(new GridBagLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
