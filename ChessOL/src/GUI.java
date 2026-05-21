@@ -103,8 +103,39 @@ public class GUI extends JFrame {
         
         JScrollPane logScroll = new JScrollPane(logArea);
         workPanel.add(activeBoard, BorderLayout.CENTER);
-        workPanel.add(inputField, BorderLayout.SOUTH);
+        JPanel bottomPanel = new JPanel(new BorderLayout());
+        bottomPanel.add(inputField, BorderLayout.CENTER);
+        
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        JButton btnDraw = new JButton("Offer Draw");
+        JButton btnResign = new JButton("Resign");
+        buttonPanel.add(btnDraw);
+        buttonPanel.add(btnResign);
+        
+        bottomPanel.add(buttonPanel, BorderLayout.EAST);
+        workPanel.add(bottomPanel, BorderLayout.SOUTH);
         workPanel.add(logScroll, BorderLayout.EAST);
+
+        btnResign.addActionListener(e -> {
+            if (out != null && !gameOver && !vsBot) {
+                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to resign?", "Resign", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    out.println("GAME:RESIGN");
+                    showGameOverDialog("You resigned. Game Over.");
+                }
+            } else if (vsBot && !gameOver) {
+                showGameOverDialog("You resigned. Bot wins.");
+            }
+        });
+
+        btnDraw.addActionListener(e -> {
+            if (out != null && !gameOver && !vsBot) {
+                out.println("GAME:DRAW_OFFER");
+                logArea.append("System: Draw offer sent...\n");
+            } else if (vsBot && !gameOver) {
+                logArea.append("System: Bot declines your draw offer.\n");
+            }
+        });
 
         inputField.addActionListener(e -> {
             if (out != null) {
@@ -527,43 +558,47 @@ public class GUI extends JFrame {
         }).start();
     }
 
+    private void showGameOverDialog(String endMessage) {
+        logArea.append(endMessage + "\n");
+        gameOver = true; //Lock the board
+        
+        SwingUtilities.invokeLater(() -> {
+            int choice = JOptionPane.showOptionDialog(this,
+                endMessage + "\nWhat would you like to do?",
+                "Game Over",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new String[]{"Rematch", "Main Menu"},
+                "Rematch");
+
+            if (choice == JOptionPane.YES_OPTION) {
+                if (vsBot) {
+                    startBotGame();
+                } else if (out != null) {
+                    out.println("REMATCH:REQUEST");
+                    logArea.append("System: Rematch requested. Waiting for opponent...\n");
+                }
+            } else {
+                if (!vsBot && out != null) {
+                    out.println("REMATCH:DECLINE");
+                }
+                returnToMenu();
+            }
+        });
+    }
+
     private void announceEndIfOver() {
         boolean sideToMove = game.whiteTurn;
         Piece king = game.getKing(sideToMove);
         boolean inCheck = game.isInCheck(king.row, king.col, sideToMove);
         boolean hasMove = game.hasLegalMove(sideToMove);
         
-        String endMessage = null;
         if (!hasMove && inCheck) {
             String winner = sideToMove ? "Black" : "White";
-            endMessage = "Checkmate! " + winner + " wins.";
+            showGameOverDialog("Checkmate! " + winner + " wins.");
         } else if (!hasMove) {
-            endMessage = "Stalemate. Draw.";
-        }
-
-        if (endMessage != null) {
-            logArea.append(endMessage + "\n");
-            gameOver = true; //Lock the board
-
-            final String msg = endMessage;
-            SwingUtilities.invokeLater(() -> {
-                int choice = JOptionPane.showOptionDialog(this,
-                    msg + "\nWhat would you like to do?",
-                    "Game Over",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    null,
-                    new String[]{"Rematch", "Main Menu"},
-                    "Rematch");
-
-                if (choice == JOptionPane.YES_OPTION) {
-                    out.println("REMATCH:REQUEST"); //Send request
-                    logArea.append("System: Rematch requested. Waiting for opponent...\n");
-                } else {
-                    out.println("REMATCH:DECLINE");
-                    returnToMenu();
-                }
-            });
+            showGameOverDialog("Stalemate. Draw.");
         }
     }
 
@@ -642,6 +677,31 @@ public class GUI extends JFrame {
                         } catch (Exception ex) {
                             SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                         }
+                    } else if (line.startsWith("GAME:RESIGN")) {
+                        SwingUtilities.invokeLater(() -> {
+                            showGameOverDialog("Opponent resigned. You win!");
+                        });
+                    } else if (line.startsWith("GAME:DRAW_OFFER")) {
+                        SwingUtilities.invokeLater(() -> {
+                            int response = JOptionPane.showConfirmDialog(this,
+                                "Opponent offered a draw. Accept?",
+                                "Draw Offer",
+                                JOptionPane.YES_NO_OPTION);
+                            if (response == JOptionPane.YES_OPTION) {
+                                out.println("GAME:DRAW_ACCEPT");
+                                showGameOverDialog("Draw agreed.");
+                            } else {
+                                out.println("GAME:DRAW_DECLINE");
+                            }
+                        });
+                    } else if (line.startsWith("GAME:DRAW_ACCEPT")) {
+                        SwingUtilities.invokeLater(() -> {
+                            showGameOverDialog("Opponent accepted the draw. Game Over.");
+                        });
+                    } else if (line.startsWith("GAME:DRAW_DECLINE")) {
+                        SwingUtilities.invokeLater(() -> {
+                            logArea.append("System: Opponent declined the draw.\n");
+                        });
                     } else if (line.startsWith("REMATCH:REQUEST")) {
                         SwingUtilities.invokeLater(() -> {
                             int response = JOptionPane.showConfirmDialog(this,
