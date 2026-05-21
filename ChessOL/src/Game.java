@@ -51,7 +51,7 @@ public class Game {
     }
 
 
-    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite, boolean isInCheck) {
+    public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite) {
         
         if (isWhite != whiteTurn) {
             return false;
@@ -221,7 +221,7 @@ public class Game {
         for (Piece p : snapshot) {
             for (int r = 0; r < 8; r++) {
                 for (int c = 0; c < 8; c++) {
-                    if (canMove(p.row, p.col, r, c, isWhite, false)) {
+                    if (canMove(p.row, p.col, r, c, isWhite)) {
                         return true;
                     }
                 }

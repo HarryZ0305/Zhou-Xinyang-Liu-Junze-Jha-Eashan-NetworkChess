@@ -420,7 +420,7 @@ public class GUI extends JFrame {
         boolean isWhite = p.isWhite;
 
         Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
-        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite, player.isInCheck);
+        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
 
         if (!canMove) {
             logArea.append("Invalid move\n");
@@ -445,14 +445,9 @@ public class GUI extends JFrame {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
             }
 
-            Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
-            mover.isInCheck = false;
-
             Piece king = game.getKing(!isWhite);
             if (game.isInCheck(king.row, king.col, !isWhite)) {
                 logArea.append("Check!\n");
-                Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
-                opponent.isInCheck = true;
                 message += ",true";
             } else {
                 message += ",false";
@@ -488,7 +483,6 @@ public class GUI extends JFrame {
             logArea.append(endMessage + "\n");
             gameOver = true; //Lock the board
 
-            //Use invokeLater so the final move paints on the board beofre the popup shows
             final String msg = endMessage;
             SwingUtilities.invokeLater(() -> {
                 int choice = JOptionPane.showOptionDialog(this,
@@ -501,13 +495,10 @@ public class GUI extends JFrame {
                     "Rematch");
 
                 if (choice == JOptionPane.YES_OPTION) {
-                    //Reset game for a rematch
-                    game = new Game();
-                    gameOver = false;
-                    logArea.append("System: Starting a new game...\n");
-                    activeBoard.repaint();
+                    out.println("REMATCH:REQUEST"); //Send request
+                    logArea.append("System: Rematch requested. Waiting for opponent...\n");
                 } else {
-                    //Disconnect and go back to home screen
+                    out.println("REMATCH:DECLINE");
                     returnToMenu();
                 }
             });
@@ -534,7 +525,11 @@ public class GUI extends JFrame {
                     logArea.append("Connecting to " + ip + "...\n");
                     s = new Socket(ip, 8888);
                 }
+                
+                // Assign to global variable so returnToMenu() can close it safely
+                currentSocket = s; 
                 out = new PrintWriter(s.getOutputStream(), true);
+                
                 logArea.append("System: Connected!\n");
                 if (isServer) {
                     playingWhite = Math.random() < 0.5;
@@ -566,7 +561,9 @@ public class GUI extends JFrame {
                             boolean isCheck = Boolean.parseBoolean(parts[6]);
                             SwingUtilities.invokeLater(() -> {
                                 logArea.append("Moved:" + message + "\n");
-                                if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite, false)) {
+                                
+                                // Removed the isInCheck parameter from canMove
+                                if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
                                     logArea.append("Invalid move received from peer\n");
                                     return;
                                 }
@@ -575,14 +572,8 @@ public class GUI extends JFrame {
                                     game.promotion(toRow, toCol, isWhite, pawnPromotion);
                                 }
                             
-                                //Mover is no longer in check
-                                Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
-                                mover.isInCheck = false;
-                                
                                 if (isCheck) {
                                     logArea.append("In Check!\n");
-                                    Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
-                                    opponent.isInCheck = true;
                                 }
                                 game.whiteTurn = !game.whiteTurn;
                                 activeBoard.repaint();
@@ -591,11 +582,44 @@ public class GUI extends JFrame {
                         } catch (Exception ex) {
                             SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                         }
+                    } else if (line.startsWith("REMATCH:REQUEST")) {
+                        SwingUtilities.invokeLater(() -> {
+                            int response = JOptionPane.showConfirmDialog(this,
+                                "Opponent requested a rematch. Accept?",
+                                "Rematch Request",
+                                JOptionPane.YES_NO_OPTION);
+                            if (response == JOptionPane.YES_OPTION) {
+                                out.println("REMATCH:ACCEPT");
+                                game = new Game();
+                                gameOver = false;
+                                logArea.append("System: Starting a new game...\n");
+                                activeBoard.repaint();
+                            } else {
+                                out.println("REMATCH:DECLINE");
+                                returnToMenu();
+                            }
+                        });
+                    } else if (line.startsWith("REMATCH:ACCEPT")) {
+                        SwingUtilities.invokeLater(() -> {
+                            game = new Game();
+                            gameOver = false;
+                            logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
+                            activeBoard.repaint();
+                        });
+                    } else if (line.startsWith("REMATCH:DECLINE")) {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(this, "Opponent declined the rematch.");
+                            returnToMenu();
+                        });
                     }
                 }
                 SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
+                SwingUtilities.invokeLater(() -> {
+                    logArea.append("Error: " + e.getMessage() + "\n");
+                    JOptionPane.showMessageDialog(this, "Connection lost or opponent disconnected.");
+                    returnToMenu();
+                });
             }
         }).start();
     }
@@ -648,7 +672,7 @@ public class GUI extends JFrame {
                         } else {
                             Piece targetP = game.board[row][col];
                             //Transfer selection when click on same color piece
-                            if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == isServer) {
+                            if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == playingWhite) {
                                 selectedRow = row;
                                 selectedCol = col;
                                 repaint();
