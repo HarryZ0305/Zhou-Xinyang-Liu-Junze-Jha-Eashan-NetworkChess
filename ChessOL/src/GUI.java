@@ -578,7 +578,7 @@ public class GUI extends JFrame {
                 SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> logArea.append("Error: " + e.getMessage() + "\n"));
-            }
+            }}
         }).start();
     }
 
