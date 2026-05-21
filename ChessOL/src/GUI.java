@@ -3,8 +3,7 @@ import java.awt.*;
 import java.net.*;
 import java.io.*;
 import javax.imageio.ImageIO;
-import java.io.File;
-import java.io.IOException;
+
 import java.util.HashMap;
 
 public class GUI extends JFrame {
@@ -698,6 +697,12 @@ public class GUI extends JFrame {
                 g2.fillRect(dc * sq, dr * sq, sq, sq);
             }
 
+            if (out != null && game.whiteTurn == playingWhite) {
+                g2.setFont(new Font("Serif", Font.BOLD, 20));
+                g2.setColor(new Color(50, 200, 50, 220));
+                g2.drawString("Your turn", 8, 24);
+            }
+            
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
