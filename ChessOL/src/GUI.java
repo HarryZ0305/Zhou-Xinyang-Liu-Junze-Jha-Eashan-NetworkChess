@@ -60,7 +60,18 @@ public class GUI extends JFrame {
             btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         }
 
-        btnServer.addActionListener(e -> startNetwork(true, null));
+        btnServer.addActionListener(e -> {
+            String portStr = JOptionPane.showInputDialog("Host on Port:", "8888");
+            if (portStr != null) {
+                try {
+                    int port = Integer.parseInt(portStr);
+                    startNetwork(true, null, port); // Update your startNetwork method to accept a port parameter!
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "Invalid Port Number.");
+                }
+            }
+        });
+
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
             if (ip != null) startNetwork(false, ip);
@@ -423,28 +434,30 @@ public class GUI extends JFrame {
         if (p == null) return;
         boolean isWhite = p.isWhite;
 
-        if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
+        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
+
+        if (!canMove) {
             logArea.append("Invalid move\n");
-            return;
-        }
-
-        String pawnPromotion = "None";
-        if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-            String prompt = "Promote to (Q/R/B/N):";
-            while (true) {
-                pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
-                pawnPromotion = pawnPromotion.trim().toUpperCase();
-                if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
-                    pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
-                prompt = "Invalid piece type. Promote to (Q/R/B/N):";
+        } else {
+            String pawnPromotion = "None";
+            if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
+                String prompt = "Promote to (Q/R/B/N):";
+                while (true) {
+                    pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
+                    if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
+                    pawnPromotion = pawnPromotion.trim().toUpperCase();
+                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
+                        pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
+                    prompt = "Invalid piece type. Promote to (Q/R/B/N):";
+                }
             }
-        }
 
-        game.Move(fromRow, fromCol, toRow, toCol, isWhite);
-        if (!pawnPromotion.equals("None")) {
-            game.promotion(toRow, toCol, isWhite, pawnPromotion);
-        }
+            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
+            
+            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+            if (!pawnPromotion.equals("None")) {
+                game.promotion(toRow, toCol, isWhite, pawnPromotion);
+            }
 
         Piece king = game.getKing(!isWhite);
         boolean givesCheck = game.isInCheck(king.row, king.col, !isWhite);
