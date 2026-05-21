@@ -33,11 +33,11 @@ public class Game {
             Scanner scanner = new Scanner(new File("src/username.txt"));
             name1=scanner.next();
             name2=scanner.next();
+            scanner.close();
         }catch(Exception e){
             name1="Default Player 1";
             name2="Default Player 2";
         }
-
         whitePlayer = new Player(name1, true);
         blackPlayer = new Player(name2, false);
         for(int i = 0; i < 8; i++){
