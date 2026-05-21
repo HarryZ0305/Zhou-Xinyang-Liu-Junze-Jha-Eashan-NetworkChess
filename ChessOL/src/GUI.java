@@ -420,7 +420,7 @@ public class GUI extends JFrame {
         boolean isWhite = p.isWhite;
 
         Player player = game.whiteTurn ? game.whitePlayer : game.blackPlayer;
-        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite, player.isInCheck);
+        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
 
         if (!canMove) {
             logArea.append("Invalid move\n");
@@ -445,14 +445,9 @@ public class GUI extends JFrame {
                 game.promotion(toRow, toCol, isWhite, pawnPromotion);
             }
 
-            Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
-            mover.isInCheck = false;
-
             Piece king = game.getKing(!isWhite);
             if (game.isInCheck(king.row, king.col, !isWhite)) {
                 logArea.append("Check!\n");
-                Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
-                opponent.isInCheck = true;
                 message += ",true";
             } else {
                 message += ",false";
@@ -677,7 +672,7 @@ public class GUI extends JFrame {
                         } else {
                             Piece targetP = game.board[row][col];
                             //Transfer selection when click on same color piece
-                            if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == isServer) {
+                            if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == playingWhite) {
                                 selectedRow = row;
                                 selectedCol = col;
                                 repaint();
