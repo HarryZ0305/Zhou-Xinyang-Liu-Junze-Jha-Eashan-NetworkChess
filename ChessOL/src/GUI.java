@@ -18,7 +18,7 @@ public class GUI extends JFrame {
     private boolean isServer;
     private boolean gameOver = false;
     private Socket currentSocket;
-    private boolean playingWhite = true;
+    private boolean playingWhite = true; 
 
     public GUI() {
         setTitle("ChessOL");
