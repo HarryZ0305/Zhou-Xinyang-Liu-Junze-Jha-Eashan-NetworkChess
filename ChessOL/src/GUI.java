@@ -21,7 +21,7 @@ public class GUI extends JFrame {
 
     public GUI() {
         setTitle("ChessOL");
-        setSize(500, 400);
+        setSize(900, 650);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
         JPanel menu = new JPanel(new GridBagLayout()) {
@@ -490,25 +490,28 @@ public class GUI extends JFrame {
     private void triggerBotMove() {
         new Thread(() -> {
             SwingUtilities.invokeLater(() -> logArea.append("Bot is thinking...\n"));
-            int[] move = GeminiBot.getMove(game.board);
+
+            long t0 = System.currentTimeMillis();
+            int[] move = ChessBot.getMove(game);
+            long elapsed = System.currentTimeMillis() - t0;
+
+            if (move == null) {
+                SwingUtilities.invokeLater(() -> logArea.append("Bot has no legal moves.\n"));
+                return;
+            }
+
+            final int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
+            final int promoChar = move[4];
             SwingUtilities.invokeLater(() -> {
-                if (move == null) {
-                    logArea.append("Bot failed to respond.\n");
-                    return;
-                }
-                int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
-                if (!game.canMove(fR, fC, tR, tC, false)) {
-                    logArea.append("Bot made an illegal move.\n");
-                    return;
-                }
-                String promo = "None";
-                if (move[4] != -1) promo = String.valueOf((char) move[4]);
+                String promo = promoChar != -1 ? String.valueOf((char) promoChar) : "None";
                 game.Move(fR, fC, tR, tC, false);
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
                 Piece king = game.getKing(true);
                 if (game.isInCheck(king.row, king.col, true)) logArea.append("Check!\n");
                 game.whiteTurn = !game.whiteTurn;
                 activeBoard.repaint();
+                logArea.append("Bot moved " + fR + "," + fC + " -> " + tR + "," + tC
+                             + " (" + elapsed + " ms)\n");
                 announceEndIfOver();
             });
         }).start();
@@ -688,7 +691,7 @@ public class GUI extends JFrame {
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mousePressed(java.awt.event.MouseEvent e) {
-                    if (game == null || out == null || gameOver){
+                    if (game == null || (!vsBot && out == null) || gameOver){
                         return;
                     } 
                     int w = getWidth(), h = getHeight();

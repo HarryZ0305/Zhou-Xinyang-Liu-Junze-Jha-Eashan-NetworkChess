@@ -50,6 +50,43 @@ public class Game {
         whiteTurn = true;//can change to random
     }
 
+    // Deep copy used by the search bot. Skips file I/O.
+    public Game(Game src) {
+        board = new Piece[8][8];
+        whitePlayer = new Player(src.whitePlayer.name, true);
+        blackPlayer = new Player(src.blackPlayer.name, false);
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = src.board[r][c];
+                if (p == null) continue;
+                Piece np = clonePiece(p);
+                board[r][c] = np;
+                if (np.isWhite) whitePlayer.pieces.add(np);
+                else            blackPlayer.pieces.add(np);
+            }
+        }
+        whiteTurn = src.whiteTurn;
+    }
+
+    private static Piece clonePiece(Piece p) {
+        Piece np;
+        switch (p.getType()) {
+            case "Pawn":
+                Pawn pawn = new Pawn(p.row, p.col, p.isWhite);
+                pawn.firstMoveTwoSquares = ((Pawn) p).firstMoveTwoSquares;
+                np = pawn;
+                break;
+            case "Knight": np = new Knight(p.row, p.col, p.isWhite); break;
+            case "Bishop": np = new Bishop(p.row, p.col, p.isWhite); break;
+            case "Rook":   np = new Rook(p.row, p.col, p.isWhite);   break;
+            case "Queen":  np = new Queen(p.row, p.col, p.isWhite);  break;
+            case "King":   np = new King(p.row, p.col, p.isWhite);   break;
+            default: return null;
+        }
+        np.moved = p.moved;
+        return np;
+    }
+
 
     public boolean canMove(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite) {
         
