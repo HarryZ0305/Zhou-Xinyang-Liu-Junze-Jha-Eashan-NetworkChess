@@ -557,19 +557,20 @@ public class GUI extends JFrame {
                                 if (!pawnPromotion.equals("None")) {
                                     game.promotion(toRow, toCol, isWhite, pawnPromotion);
                                 }
-                            }
-                            //Mover is no longer in check
-                            Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
-                            mover.isInCheck = false;
-                            if (isCheck) {
-                                logArea.append("In Check!\n");
-                                Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
-                                opponent.isInCheck = true;
-                            }
-                            game.whiteTurn = !game.whiteTurn;
-                            activeBoard.repaint();
-                            announceEndIfOver();
-                        });
+                            
+                                //Mover is no longer in check
+                                Player mover = isWhite ? game.whitePlayer : game.blackPlayer;
+                                mover.isInCheck = false;
+                                
+                                if (isCheck) {
+                                    logArea.append("In Check!\n");
+                                    Player opponent = !isWhite ? game.whitePlayer : game.blackPlayer;
+                                    opponent.isInCheck = true;
+                                }
+                                game.whiteTurn = !game.whiteTurn;
+                                activeBoard.repaint();
+                                announceEndIfOver();
+                            });
                     } catch (Exception ex) {
                         SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
                     }
@@ -618,7 +619,7 @@ public class GUI extends JFrame {
                             selectedCol = col;
                             repaint();
                         }
-                    } } else {
+                    } else {
                         if (selectedRow == row && selectedCol == col) {
                             //Deselect if clicking the same piece twice
                             selectedRow = -1;
