@@ -74,7 +74,7 @@ public class GUI extends JFrame {
 
         btnClient.addActionListener(e -> {
             String ip = JOptionPane.showInputDialog("Host IP:", "127.0.0.1");
-            if (ip != null) startNetwork(false, ip);
+            if (ip != null) startNetwork(false, ip, 8888);
         });
         btnBot.addActionListener(e -> startBotGame());
 
@@ -434,30 +434,28 @@ public class GUI extends JFrame {
         if (p == null) return;
         boolean isWhite = p.isWhite;
 
-        boolean canMove = game.canMove(fromRow, fromCol, toRow, toCol, isWhite);
-
-        if (!canMove) {
+        if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
             logArea.append("Invalid move\n");
-        } else {
-            String pawnPromotion = "None";
-            if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-                String prompt = "Promote to (Q/R/B/N):";
-                while (true) {
-                    pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                    if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
-                    pawnPromotion = pawnPromotion.trim().toUpperCase();
-                    if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
-                        pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
-                    prompt = "Invalid piece type. Promote to (Q/R/B/N):";
-                }
-            }
+            return;
+        }
 
-            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion;
-            
-            game.Move(fromRow, fromCol, toRow, toCol, isWhite);
-            if (!pawnPromotion.equals("None")) {
-                game.promotion(toRow, toCol, isWhite, pawnPromotion);
+        String pawnPromotion = "None";
+        if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
+            String prompt = "Promote to (Q/R/B/N):";
+            while (true) {
+                pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
+                if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
+                pawnPromotion = pawnPromotion.trim().toUpperCase();
+                if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
+                    pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
+                prompt = "Invalid piece type. Promote to (Q/R/B/N):";
             }
+        }
+
+        game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+        if (!pawnPromotion.equals("None")) {
+            game.promotion(toRow, toCol, isWhite, pawnPromotion);
+        }
 
         Piece king = game.getKing(!isWhite);
         boolean givesCheck = game.isInCheck(king.row, king.col, !isWhite);
@@ -556,7 +554,7 @@ public class GUI extends JFrame {
         }
     }
 
-    private void startNetwork(boolean isServer, String ip) {
+    private void startNetwork(boolean isServer, String ip, int port) {
         game = new Game();
         gameOver = false;
         logArea.setText("");
@@ -566,13 +564,13 @@ public class GUI extends JFrame {
             try {
                 Socket s;
                 if (isServer) {
-                    logArea.append("Waiting for client on 8888...\n");
-                    try (ServerSocket ss = new ServerSocket(8888)) {
+                    logArea.append("Waiting for client on " + port + "...\n");
+                    try (ServerSocket ss = new ServerSocket(port)) {
                         s = ss.accept();
                     }
                 } else {
-                    logArea.append("Connecting to " + ip + "...\n");
-                    s = new Socket(ip, 8888);
+                    logArea.append("Connecting to " + ip + ":" + port + "...\n");
+                    s = new Socket(ip, port);
                 }
                 
                 // Assign to global variable so returnToMenu() can close it safely
