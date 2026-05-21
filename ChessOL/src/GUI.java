@@ -571,8 +571,9 @@ public class GUI extends JFrame {
                                 activeBoard.repaint();
                                 announceEndIfOver();
                             });
-                    } catch (Exception ex) {
-                        SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
+                        } catch (Exception ex) {
+                            SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
+                        }
                     }
                 }
                 SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
