@@ -16,6 +16,7 @@ public class GUI extends JFrame {
     Game game = new Game();
     ActiveBoardPanel activeBoard;
     private boolean isServer;
+    private boolean playingWhite = true;
 
     public GUI() {
         setTitle("ChessOL");
@@ -498,11 +499,21 @@ public class GUI extends JFrame {
                 }
                 out = new PrintWriter(s.getOutputStream(), true);
                 logArea.append("System: Connected!\n");
-                SwingUtilities.invokeLater(() -> activeBoard.repaint()); 
+                if (isServer) {
+                    playingWhite = Math.random() < 0.5;
+                    out.println("COLOR:" + (playingWhite ? "black" : "white"));
+                }
+                SwingUtilities.invokeLater(() -> activeBoard.repaint());
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
-                    if (line.startsWith("CHAT:")) {
+                    if (line.startsWith("COLOR:")) {
+                        boolean clientIsWhite = line.substring(6).equals("white");
+                        SwingUtilities.invokeLater(() -> {
+                            playingWhite = clientIsWhite;
+                            activeBoard.repaint();
+                        });
+                    } else if (line.startsWith("CHAT:")) {
                         String chatMsg = line.substring(5);
                         SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + chatMsg + "\n"));
                     } else if (line.startsWith("MOVE:")) {
@@ -563,8 +574,8 @@ public class GUI extends JFrame {
         private int selectedRow = -1;
         private int selectedCol = -1;
         
-        private boolean flipped(){ 
-            return !isServer; 
+        private boolean flipped(){
+            return !playingWhite;
         }
 
         public ActiveBoardPanel() {
@@ -584,7 +595,7 @@ public class GUI extends JFrame {
                     int row = flipped() ? 7 - displayRow : displayRow;
                     if (selectedRow == -1) {
                         Piece p = game.board[row][col];
-                        if (p != null && p.isWhite == game.whiteTurn && p.isWhite == isServer) {
+                        if (p != null && p.isWhite == game.whiteTurn && p.isWhite == playingWhite) {
                             selectedRow = row;
                             selectedCol = col;
                             repaint();
