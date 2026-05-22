@@ -604,15 +604,25 @@ public class GUI extends JFrame {
 
         String pawnPromotion = "None";
         if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-            String prompt = "Promote to (Q/R/B/N):";
-            while (true) {
-                pawnPromotion = JOptionPane.showInputDialog(this, prompt, "Pawn Promotion", JOptionPane.PLAIN_MESSAGE);
-                if (pawnPromotion == null) { pawnPromotion = "Q"; break; }
-                pawnPromotion = pawnPromotion.trim().toUpperCase();
-                if (pawnPromotion.equals("Q") || pawnPromotion.equals("R") ||
-                    pawnPromotion.equals("B") || pawnPromotion.equals("N")) break;
-                prompt = "Invalid piece type. Promote to (Q/R/B/N):";
-            }
+            
+            //Graphical Promotion Menu
+            String colorStr = isWhite ? "White" : "Black";
+            Object[] options = {
+                new ImageIcon(pieceImages.get(colorStr + "Queen").getScaledInstance(60, 60, Image.SCALE_SMOOTH)),
+                new ImageIcon(pieceImages.get(colorStr + "Rook").getScaledInstance(60, 60, Image.SCALE_SMOOTH)),
+                new ImageIcon(pieceImages.get(colorStr + "Bishop").getScaledInstance(60, 60, Image.SCALE_SMOOTH)),
+                new ImageIcon(pieceImages.get(colorStr + "Knight").getScaledInstance(60, 60, Image.SCALE_SMOOTH))
+            };
+            
+            int choice = JOptionPane.showOptionDialog(this, 
+                "Choose a piece to promote to:", "Pawn Promotion",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, 
+                null, options, options[0]);
+                
+            if (choice == 1) pawnPromotion = "R";
+            else if (choice == 2) pawnPromotion = "B";
+            else if (choice == 3) pawnPromotion = "N";
+            else pawnPromotion = "Q"; // Defaults to Queen if user closes dialog
         }
 
         game.Move(fromRow, fromCol, toRow, toCol, isWhite);
