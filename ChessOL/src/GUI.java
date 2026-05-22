@@ -38,6 +38,9 @@ public class GUI extends JFrame {
     private String localPlayerName;
     private String opponentPlayerName;
 
+    CapturedPanel whiteCapturedPanel;
+    CapturedPanel blackCapturedPanel;
+
     public GUI() {
         loadImages();
         setTitle("ChessOL");
@@ -142,13 +145,26 @@ public class GUI extends JFrame {
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
 
+        JPanel topSection = new JPanel(new BorderLayout(0, 10));
+        topSection.setOpaque(false);
+
         //Top: Player cards + Status
         statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         statusLabel.setForeground(new Color(247, 250, 252));
         statusLabel.setOpaque(true);
         statusLabel.setBackground(new Color(26, 32, 44));
         statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        topSection.add(statusLabel, BorderLayout.NORTH);
+
+        whiteCapturedPanel = new CapturedPanel(true);
+        blackCapturedPanel = new CapturedPanel(false);
+        JPanel capturedContainer = new JPanel(new GridLayout(2, 1, 0, 5));
+        capturedContainer.setOpaque(false);
+        capturedContainer.add(whiteCapturedPanel); // White pieces captured by Black
+        capturedContainer.add(blackCapturedPanel); // Black pieces captured by White
+        topSection.add(capturedContainer, BorderLayout.CENTER);
+
+        dashboardPanel.add(topSection, BorderLayout.NORTH);
 
         whitePlayerCard = buildPlayerCard(whiteNameLabel, whiteClockLabel);
         blackPlayerCard = buildPlayerCard(blackNameLabel, blackClockLabel);
@@ -636,6 +652,8 @@ public class GUI extends JFrame {
 
         game.whiteTurn = !game.whiteTurn;
         activeBoard.repaint();
+        whiteCapturedPanel.repaint();
+        blackCapturedPanel.repaint();
         announceEndIfOver();
 
         if (vsBot) {
@@ -659,6 +677,8 @@ public class GUI extends JFrame {
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         logArea.append("Game started! You are White. Bot is thinking as Black...\n");
         activeBoard.repaint();
+        whiteCapturedPanel.repaint();
+        blackCapturedPanel.repaint();
         startGameClock();
     }
 
@@ -685,6 +705,8 @@ public class GUI extends JFrame {
                 if (game.isInCheck(king.row, king.col, true)) logArea.append("Check!\n");
                 game.whiteTurn = !game.whiteTurn;
                 activeBoard.repaint();
+                whiteCapturedPanel.repaint();
+                blackCapturedPanel.repaint();
                 logArea.append("Bot moved " + fR + "," + fC + " -> " + tR + "," + tC
                              + " (" + elapsed + " ms)\n");
                 announceEndIfOver();
@@ -910,6 +932,8 @@ public class GUI extends JFrame {
                 }
                 SwingUtilities.invokeLater(() -> {
                     activeBoard.repaint();
+                    whiteCapturedPanel.repaint();
+                    blackCapturedPanel.repaint();
                     startGameClock();
                 });
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
@@ -922,6 +946,8 @@ public class GUI extends JFrame {
                             applyMyName();
                             refreshPlayerNames();
                             activeBoard.repaint();
+                            whiteCapturedPanel.repaint();
+                            blackCapturedPanel.repaint();
                         });
                         // Client now knows its colour — tell server its name.
                         out.println("NAME:" + localPlayerName);
@@ -964,6 +990,8 @@ public class GUI extends JFrame {
                                 }
                                 game.whiteTurn = !game.whiteTurn;
                                 activeBoard.repaint();
+                                whiteCapturedPanel.repaint();
+                                blackCapturedPanel.repaint();
                                 announceEndIfOver();
                             });
                         } catch (Exception ex) {
@@ -1008,6 +1036,8 @@ public class GUI extends JFrame {
                                 applyOpponentName();
                                 logArea.append("System: Starting a new game...\n");
                                 activeBoard.repaint();
+                                whiteCapturedPanel.repaint();
+                                blackCapturedPanel.repaint();
                                 startGameClock();
                             } else {
                                 out.println("REMATCH:DECLINE");
@@ -1022,6 +1052,8 @@ public class GUI extends JFrame {
                             applyOpponentName();
                             logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
                             activeBoard.repaint();
+                            whiteCapturedPanel.repaint();
+                            blackCapturedPanel.repaint();
                             startGameClock();
                         });
                     } else if (line.startsWith("REMATCH:DECLINE")) {
@@ -1206,5 +1238,36 @@ public class GUI extends JFrame {
         localPlayerName = null;
         opponentPlayerName = null;
         ((CardLayout)cards.getLayout()).show(cards, "MENU");
+    }
+
+    private class CapturedPanel extends JPanel {
+        private boolean isWhite;
+        
+        public CapturedPanel(boolean isWhite) {
+            this.isWhite = isWhite;
+            setPreferredSize(new Dimension(200, 35));
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (game == null) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            //Get the list of captured pieces
+            ArrayList<Piece> captured = isWhite ? game.capturedWhite : game.capturedBlack;
+            
+            int x = 0;
+            for (Piece p : captured) {
+                String key = (isWhite ? "White" : "Black") + p.getType();
+                Image img = pieceImages.get(key);
+                if (img != null) {
+                    g2.drawImage(img, x, 2, 30, 30, this);
+                    x += 15;
+                }
+            }
+        }
     }
 }
