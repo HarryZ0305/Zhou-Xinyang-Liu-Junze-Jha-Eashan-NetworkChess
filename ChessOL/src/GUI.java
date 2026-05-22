@@ -35,6 +35,9 @@ public class GUI extends JFrame {
     private Timer chessClock;
     private static final long INITIAL_TIME_MS = 10L * 60 * 1000;
 
+    private String localPlayerName;
+    private String opponentPlayerName;
+
     public GUI() {
         loadImages();
         setTitle("ChessOL");
@@ -805,6 +808,20 @@ public class GUI extends JFrame {
         blackNameLabel.setText("♚ " + bn);
     }
 
+    // Assign localPlayerName to whichever colour I am playing as.
+    private void applyMyName() {
+        if (localPlayerName == null || game == null) return;
+        if (playingWhite) game.whitePlayer.name = localPlayerName;
+        else              game.blackPlayer.name = localPlayerName;
+    }
+
+    // Assign opponentPlayerName to the colour opposite to me.
+    private void applyOpponentName() {
+        if (opponentPlayerName == null || game == null) return;
+        if (playingWhite) game.blackPlayer.name = opponentPlayerName;
+        else              game.whitePlayer.name = opponentPlayerName;
+    }
+
     private void updateClockLabels() {
         whiteClockLabel.setText(fmtClock(whiteTimeMs));
         blackClockLabel.setText(fmtClock(blackTimeMs));
@@ -848,6 +865,10 @@ public class GUI extends JFrame {
         gameOver = false;
         logArea.setText("");
 
+        // username.txt: first entry = host's name, second entry = client's name.
+        localPlayerName = isServer ? game.whitePlayer.name : game.blackPlayer.name;
+        opponentPlayerName = null;
+
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         new Thread(() -> {
             try {
@@ -861,15 +882,21 @@ public class GUI extends JFrame {
                     logArea.append("Connecting to " + ip + ":" + port + "...\n");
                     s = new Socket(ip, port);
                 }
-                
+
                 // Assign to global variable so returnToMenu() can close it safely
-                currentSocket = s; 
+                currentSocket = s;
                 out = new PrintWriter(s.getOutputStream(), true);
-                
+
                 logArea.append("System: Connected!\n");
                 if (isServer) {
                     playingWhite = Math.random() < 0.5;
                     out.println("COLOR:" + (playingWhite ? "black" : "white"));
+                    // Server colour already decided — apply own name and announce.
+                    SwingUtilities.invokeLater(() -> {
+                        applyMyName();
+                        refreshPlayerNames();
+                    });
+                    out.println("NAME:" + localPlayerName);
                 }
                 SwingUtilities.invokeLater(() -> {
                     activeBoard.repaint();
@@ -882,7 +909,18 @@ public class GUI extends JFrame {
                         boolean clientIsWhite = line.substring(6).equals("white");
                         SwingUtilities.invokeLater(() -> {
                             playingWhite = clientIsWhite;
+                            applyMyName();
+                            refreshPlayerNames();
                             activeBoard.repaint();
+                        });
+                        // Client now knows its colour — tell server its name.
+                        out.println("NAME:" + localPlayerName);
+                    } else if (line.startsWith("NAME:")) {
+                        String oppName = line.substring(5);
+                        SwingUtilities.invokeLater(() -> {
+                            opponentPlayerName = oppName;
+                            applyOpponentName();
+                            refreshPlayerNames();
                         });
                     } else if (line.startsWith("CHAT:")) {
                         String chatMsg = line.substring(5);
@@ -956,6 +994,8 @@ public class GUI extends JFrame {
                                 out.println("REMATCH:ACCEPT");
                                 game = new Game();
                                 gameOver = false;
+                                applyMyName();
+                                applyOpponentName();
                                 logArea.append("System: Starting a new game...\n");
                                 activeBoard.repaint();
                                 startGameClock();
@@ -968,6 +1008,8 @@ public class GUI extends JFrame {
                         SwingUtilities.invokeLater(() -> {
                             game = new Game();
                             gameOver = false;
+                            applyMyName();
+                            applyOpponentName();
                             logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
                             activeBoard.repaint();
                             startGameClock();
@@ -1151,6 +1193,8 @@ public class GUI extends JFrame {
         }
         out = null;
         currentSocket = null;
+        localPlayerName = null;
+        opponentPlayerName = null;
         ((CardLayout)cards.getLayout()).show(cards, "MENU");
     }
 }
