@@ -22,6 +22,18 @@ public class GUI extends JFrame {
     private boolean vsBot = false;
     private JLabel statusLabel = new JLabel("STATUS: WAITING...", SwingConstants.CENTER);
 
+    private JLabel whiteNameLabel = new JLabel("White");
+    private JLabel blackNameLabel = new JLabel("Black");
+    private JLabel whiteClockLabel = new JLabel("10:00");
+    private JLabel blackClockLabel = new JLabel("10:00");
+    private JPanel whitePlayerCard;
+    private JPanel blackPlayerCard;
+    private long whiteTimeMs = 0;
+    private long blackTimeMs = 0;
+    private long lastTickMs = 0;
+    private Timer chessClock;
+    private static final long INITIAL_TIME_MS = 10L * 60 * 1000;
+
     public GUI() {
         setTitle("ChessOL");
         setSize(900, 650);
@@ -125,13 +137,27 @@ public class GUI extends JFrame {
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
 
-        //Top: Status
+        //Top: Player cards + Status
         statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         statusLabel.setForeground(new Color(247, 250, 252));
         statusLabel.setOpaque(true);
         statusLabel.setBackground(new Color(26, 32, 44));
         statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        dashboardPanel.add(statusLabel, BorderLayout.NORTH);
+        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        whitePlayerCard = buildPlayerCard(whiteNameLabel, whiteClockLabel);
+        blackPlayerCard = buildPlayerCard(blackNameLabel, blackClockLabel);
+
+        JPanel topInfo = new JPanel();
+        topInfo.setOpaque(false);
+        topInfo.setLayout(new BoxLayout(topInfo, BoxLayout.Y_AXIS));
+        topInfo.add(blackPlayerCard);
+        topInfo.add(Box.createVerticalStrut(6));
+        topInfo.add(whitePlayerCard);
+        topInfo.add(Box.createVerticalStrut(8));
+        topInfo.add(statusLabel);
+
+        dashboardPanel.add(topInfo, BorderLayout.NORTH);
 
         //Middle: Chat & Logs
         logArea.setEditable(false);
@@ -611,11 +637,13 @@ public class GUI extends JFrame {
         vsBot = true;
         playingWhite = true;
         game = new Game();
+        game.blackPlayer.name = "Bot";
         gameOver = false;
         logArea.setText("");
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         logArea.append("Game started! You are White. Bot is thinking as Black...\n");
         activeBoard.repaint();
+        startGameClock();
     }
 
     private void triggerBotMove() {
@@ -651,6 +679,7 @@ public class GUI extends JFrame {
     private void showGameOverDialog(String endMessage) {
         logArea.append(endMessage + "\n");
         gameOver = true;
+        stopGameClock();
 
         SwingUtilities.invokeLater(() -> {
             String[] options = {"Rematch", "Export History", "Main Menu"};
@@ -698,6 +727,105 @@ public class GUI extends JFrame {
         }
     }
 
+    private JPanel buildPlayerCard(JLabel nameLbl, JLabel clockLbl) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(new Color(26, 32, 44));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 85, 104), 1),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        card.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        nameLbl.setForeground(new Color(247, 250, 252));
+        nameLbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        clockLbl.setForeground(new Color(208, 212, 219));
+        clockLbl.setFont(new Font("Consolas", Font.BOLD, 18));
+
+        card.add(nameLbl, BorderLayout.WEST);
+        card.add(clockLbl, BorderLayout.EAST);
+        return card;
+    }
+
+    private void startGameClock() {
+        whiteTimeMs = INITIAL_TIME_MS;
+        blackTimeMs = INITIAL_TIME_MS;
+        lastTickMs = System.currentTimeMillis();
+        refreshPlayerNames();
+        updateClockLabels();
+        highlightActivePlayer();
+        if (chessClock == null) {
+            chessClock = new Timer(200, e -> tickClock());
+            chessClock.setRepeats(true);
+        }
+        chessClock.start();
+    }
+
+    private void stopGameClock() {
+        if (chessClock != null) chessClock.stop();
+    }
+
+    private void tickClock() {
+        if (game == null) return;
+        long now = System.currentTimeMillis();
+        long delta = Math.min(now - lastTickMs, 5000); // cap freeze/dialog pauses
+        lastTickMs = now;
+        if (gameOver) return;
+
+        if (game.whiteTurn) {
+            whiteTimeMs -= delta;
+            if (whiteTimeMs <= 0) {
+                whiteTimeMs = 0;
+                updateClockLabels();
+                stopGameClock();
+                showGameOverDialog("White ran out of time. Black wins.");
+                return;
+            }
+        } else {
+            blackTimeMs -= delta;
+            if (blackTimeMs <= 0) {
+                blackTimeMs = 0;
+                updateClockLabels();
+                stopGameClock();
+                showGameOverDialog("Black ran out of time. White wins.");
+                return;
+            }
+        }
+        updateClockLabels();
+        highlightActivePlayer();
+    }
+
+    private void refreshPlayerNames() {
+        if (game == null) return;
+        String wn = game.whitePlayer != null ? game.whitePlayer.name : "White";
+        String bn = game.blackPlayer != null ? game.blackPlayer.name : "Black";
+        whiteNameLabel.setText("♔ " + wn);
+        blackNameLabel.setText("♚ " + bn);
+    }
+
+    private void updateClockLabels() {
+        whiteClockLabel.setText(fmtClock(whiteTimeMs));
+        blackClockLabel.setText(fmtClock(blackTimeMs));
+    }
+
+    private static String fmtClock(long ms) {
+        long total = Math.max(0, ms) / 1000;
+        long m = total / 60;
+        long s = total % 60;
+        return String.format("%d:%02d", m, s);
+    }
+
+    private void highlightActivePlayer() {
+        if (game == null || whitePlayerCard == null) return;
+        JPanel active   = game.whiteTurn ? whitePlayerCard : blackPlayerCard;
+        JPanel inactive = game.whiteTurn ? blackPlayerCard : whitePlayerCard;
+        active.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(255, 87, 34), 2),
+            BorderFactory.createEmptyBorder(7, 11, 7, 11)));
+        inactive.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 85, 104), 1),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+    }
+
     private void announceEndIfOver() {
         boolean sideToMove = game.whiteTurn;
         Piece king = game.getKing(sideToMove);
@@ -740,7 +868,10 @@ public class GUI extends JFrame {
                     playingWhite = Math.random() < 0.5;
                     out.println("COLOR:" + (playingWhite ? "black" : "white"));
                 }
-                SwingUtilities.invokeLater(() -> activeBoard.repaint());
+                SwingUtilities.invokeLater(() -> {
+                    activeBoard.repaint();
+                    startGameClock();
+                });
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
                 while ((line = in.readLine()) != null) {
@@ -824,6 +955,7 @@ public class GUI extends JFrame {
                                 gameOver = false;
                                 logArea.append("System: Starting a new game...\n");
                                 activeBoard.repaint();
+                                startGameClock();
                             } else {
                                 out.println("REMATCH:DECLINE");
                                 returnToMenu();
@@ -835,6 +967,7 @@ public class GUI extends JFrame {
                             gameOver = false;
                             logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
                             activeBoard.repaint();
+                            startGameClock();
                         });
                     } else if (line.startsWith("REMATCH:DECLINE")) {
                         SwingUtilities.invokeLater(() -> {
@@ -1009,6 +1142,7 @@ public class GUI extends JFrame {
     }
 
     private void returnToMenu() {
+        stopGameClock();
         try {
             if (out != null) out.close();
             if (currentSocket != null) currentSocket.close();
