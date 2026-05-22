@@ -958,6 +958,35 @@ public class GUI extends JFrame {
                 g2.fillRect(dc * sq, dr * sq, sq, sq);
             }
 
+            //Draw valid move highlights
+            if (selectedRow != -1 && selectedCol != -1 && game != null) {
+                Piece selectedPiece = game.board[selectedRow][selectedCol];
+                if (selectedPiece != null) {
+                    g2.setColor(new Color(0, 0, 0, 60)); 
+                    
+                    for (int r = 0; r < 8; r++) {
+                        for (int c = 0; c < 8; c++) {
+                            if (game.canMove(selectedRow, selectedCol, r, c, selectedPiece.isWhite)) {
+                                int dr = flipped() ? 7 - r : r;
+                                int dc = flipped() ? 7 - c : c;
+                                
+                                int radius = sq / 6;
+                                int centerX = dc * sq + sq / 2;
+                                int centerY = dr * sq + sq / 2;
+                                
+                                //Draw hollow ring for captures, solid dot for empty squares
+                                if (game.board[r][c] != null) {
+                                    g2.setStroke(new BasicStroke(4f));
+                                    g2.drawOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+                                } else {
+                                    g2.fillOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Draw pieces
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
