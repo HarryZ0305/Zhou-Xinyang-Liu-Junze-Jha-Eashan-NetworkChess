@@ -18,6 +18,7 @@ public class GUI extends JFrame {
     private Socket currentSocket;
     private boolean playingWhite = true;
     private boolean vsBot = false;
+    private JLabel statusLabel = new JLabel("STATUS: WAITING...", SwingConstants.CENTER);
 
     public GUI() {
         setTitle("ChessOL");
@@ -99,26 +100,92 @@ public class GUI extends JFrame {
         gbc.gridwidth = 2; gbc.gridy = 2; gbc.gridx = 0;
         menu.add(btnBot, gbc);
 
-        JPanel workPanel = new JPanel(new BorderLayout());
+        JPanel workPanel = new JPanel(new GridBagLayout());
+        workPanel.setBackground(new Color(30, 32, 36)); // Dark Slate
+
+        //Left: Board Container
+        JPanel boardContainer = new JPanel(new GridBagLayout()); 
+        boardContainer.setBackground(new Color(30, 32, 36));
         activeBoard = new ActiveBoardPanel();
-        logArea.setEditable(false);
+        activeBoard.setPreferredSize(new Dimension(500, 500));
+        activeBoard.setMinimumSize(new Dimension(400, 400));
         
+        GridBagConstraints bc = new GridBagConstraints();
+        bc.weightx = 1.0; bc.weighty = 1.0; bc.fill = GridBagConstraints.BOTH;
+        bc.insets = new Insets(20, 20, 20, 20);
+        boardContainer.add(activeBoard, bc);
+
+        //Right: Dashboard Container
+        JPanel dashboardPanel = new JPanel(new BorderLayout(0, 10));
+        dashboardPanel.setBackground(new Color(45, 55, 72));
+        dashboardPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 2, 0, 0, new Color(74, 85, 104)), 
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+
+        //Top: Status
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        statusLabel.setForeground(new Color(247, 250, 252));
+        statusLabel.setOpaque(true);
+        statusLabel.setBackground(new Color(26, 32, 44));
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        dashboardPanel.add(statusLabel, BorderLayout.NORTH);
+
+        //Middle: Chat & Logs
+        logArea.setEditable(false);
+        logArea.setBackground(new Color(26, 32, 44));
+        logArea.setForeground(new Color(208, 212, 219));
+        logArea.setFont(new Font("Consolas", Font.PLAIN, 14));
         ((javax.swing.text.DefaultCaret)logArea.getCaret()).setUpdatePolicy(javax.swing.text.DefaultCaret.ALWAYS_UPDATE);
         
         JScrollPane logScroll = new JScrollPane(logArea);
-        workPanel.add(activeBoard, BorderLayout.CENTER);
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(inputField, BorderLayout.CENTER);
+        logScroll.setBorder(BorderFactory.createLineBorder(new Color(74, 85, 104), 1));
         
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        JButton btnDraw = new JButton("Offer Draw");
-        JButton btnResign = new JButton("Resign");
-        buttonPanel.add(btnDraw);
-        buttonPanel.add(btnResign);
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        tabs.addTab("CHAT & MOVES", logScroll);
+        dashboardPanel.add(tabs, BorderLayout.CENTER);
+
+        //Bottom: Input & Actions
+        JPanel controlPanel = new JPanel(new BorderLayout(0, 10));
+        controlPanel.setOpaque(false);
+
+        inputField.setBackground(new Color(26, 32, 44));
+        inputField.setForeground(Color.WHITE);
+        inputField.setCaretColor(Color.WHITE);
+        inputField.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        inputField.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(74, 85, 104), 1),
+            BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        ));
+        controlPanel.add(inputField, BorderLayout.NORTH);
+
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        buttonPanel.setOpaque(false);
+        JButton btnDraw = new JButton("🤝 Offer Draw");
+        JButton btnResign = new JButton("🏳️ Resign");
         
-        bottomPanel.add(buttonPanel, BorderLayout.EAST);
-        workPanel.add(bottomPanel, BorderLayout.SOUTH);
-        workPanel.add(logScroll, BorderLayout.EAST);
+        for (JButton btn : new JButton[]{btnDraw, btnResign}) {
+            btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            btn.setBackground(new Color(74, 85, 104));
+            btn.setForeground(Color.WHITE);
+            btn.setFocusPainted(false);
+            btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+            btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            buttonPanel.add(btn);
+        }
+        controlPanel.add(buttonPanel, BorderLayout.SOUTH);
+        dashboardPanel.add(controlPanel, BorderLayout.SOUTH);
+
+        GridBagConstraints gbcWork = new GridBagConstraints();
+        gbcWork.gridx = 0; gbcWork.gridy = 0;
+        gbcWork.weightx = 0.65; gbcWork.weighty = 1.0;
+        gbcWork.fill = GridBagConstraints.BOTH;
+        workPanel.add(boardContainer, gbcWork);
+
+        gbcWork.gridx = 1;
+        gbcWork.weightx = 0.35;
+        workPanel.add(dashboardPanel, gbcWork);
 
         btnResign.addActionListener(e -> {
             if (out != null && !gameOver && !vsBot) {
@@ -154,6 +221,21 @@ public class GUI extends JFrame {
         cards.add(workPanel, "WORK");
         add(cards);
         setVisible(true);
+
+        public void updateStatus() {
+            if (gameOver){
+                return;
+            } 
+            SwingUtilities.invokeLater(() -> {
+                if (game.whiteTurn == playingWhite) {
+                    statusLabel.setText("STATUS: YOUR TURN");
+                    statusLabel.setForeground(new Color(255, 87, 34));
+                } else {
+                    statusLabel.setText("STATUS: OPPONENT'S TURN");
+                    statusLabel.setForeground(new Color(208, 212, 219)); // Idle Gray
+                }
+            });
+        }
     }
 
     private void drawBattleBackground(Graphics2D g2, int W, int H) {
@@ -750,8 +832,8 @@ public class GUI extends JFrame {
 
 
     private class ActiveBoardPanel extends JPanel {
-        private static final Color light = new Color(240, 217, 181);
-        private static final Color dark  = new Color(181, 136,  99);
+        private static final Color light = new Color(208, 212, 219); 
+        private static final Color dark  = new Color(74, 85, 104);   
         private HashMap<String, Image> pieceImages = new HashMap<>();
         private int selectedRow = -1;
         private int selectedCol = -1;
@@ -833,6 +915,8 @@ public class GUI extends JFrame {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
             int sq = Math.min(w, h) / 8;
+            
+            //Draw board squares
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
                     int dr = flipped() ? 7 - row : row;
@@ -842,19 +926,15 @@ public class GUI extends JFrame {
                 }
             }
 
+            //Draw selection highlight
             if (selectedRow != -1 && selectedCol != -1) {
                 int dr = flipped() ? 7 - selectedRow : selectedRow;
                 int dc = flipped() ? 7 - selectedCol : selectedCol;
-                g2.setColor(new Color(255, 255, 50, 120));
+                g2.setColor(new Color(255, 87, 34, 180));
                 g2.fillRect(dc * sq, dr * sq, sq, sq);
             }
 
-            if (out != null && game.whiteTurn == playingWhite) {
-                g2.setFont(new Font("Serif", Font.BOLD, 20));
-                g2.setColor(new Color(50, 200, 50, 220));
-                g2.drawString("Your turn", 8, 24);
-            }
-            
+            // Draw pieces
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
