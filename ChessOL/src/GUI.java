@@ -16,6 +16,7 @@ public class GUI extends JFrame {
     private PrintWriter out;
     Game game = new Game();
     ActiveBoardPanel activeBoard;
+    private HashMap<String, Image> pieceImages = new HashMap<>();
     private boolean gameOver = false;
     private Socket currentSocket;
     private boolean playingWhite = true;
@@ -35,6 +36,7 @@ public class GUI extends JFrame {
     private static final long INITIAL_TIME_MS = 10L * 60 * 1000;
 
     public GUI() {
+        loadImages();
         setTitle("ChessOL");
         setSize(900, 650);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -988,11 +990,25 @@ public class GUI extends JFrame {
         }).start();
     }
 
+    private void loadImages() {
+        String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
+        String[] colors = {"White", "Black"};
+        try {
+            for (String pieceColor : colors) {
+                for (String pieceType : pieces) {
+                    String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
+                    Image imagePiece = ImageIO.read(new File(fileName));
+                    pieceImages.put(pieceColor + pieceType, imagePiece);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error loading images: " + e.getMessage());
+        }
+    }
 
     private class ActiveBoardPanel extends JPanel {
         private static final Color light = new Color(208, 212, 219); 
         private static final Color dark  = new Color(74, 85, 104);   
-        private HashMap<String, Image> pieceImages = new HashMap<>();
         private int selectedRow = -1;
         private int selectedCol = -1;
         
@@ -1001,7 +1017,6 @@ public class GUI extends JFrame {
         }
 
         public ActiveBoardPanel() {
-            loadImages();
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mousePressed(java.awt.event.MouseEvent e) {
@@ -1048,22 +1063,6 @@ public class GUI extends JFrame {
                     }
                 }
             });
-        }
-
-        private void loadImages() {
-            String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
-            String[] colors = {"White", "Black"};
-            try {
-                for (String pieceColor : colors) {
-                    for (String pieceType : pieces) {
-                        String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
-                        Image imagePiece = ImageIO.read(new File(fileName));
-                        pieceImages.put(pieceColor + pieceType, imagePiece);
-                    }
-                }
-            } catch (IOException e) {
-                System.out.println("Error loading images: " + e.getMessage());
-            }
         }
 
         @Override
