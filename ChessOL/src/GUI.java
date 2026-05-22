@@ -5,6 +5,8 @@ import java.io.*;
 import javax.imageio.ImageIO;
 
 import java.util.HashMap;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 
 public class GUI extends JFrame {
 
@@ -648,32 +650,52 @@ public class GUI extends JFrame {
 
     private void showGameOverDialog(String endMessage) {
         logArea.append(endMessage + "\n");
-        gameOver = true; //Lock the board
-        
-        SwingUtilities.invokeLater(() -> {
-            int choice = JOptionPane.showOptionDialog(this,
-                endMessage + "\nWhat would you like to do?",
-                "Game Over",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.INFORMATION_MESSAGE,
-                null,
-                new String[]{"Rematch", "Main Menu"},
-                "Rematch");
+        gameOver = true;
 
-            if (choice == JOptionPane.YES_OPTION) {
-                if (vsBot) {
-                    startBotGame();
-                } else if (out != null) {
-                    out.println("REMATCH:REQUEST");
-                    logArea.append("System: Rematch requested. Waiting for opponent...\n");
+        SwingUtilities.invokeLater(() -> {
+            String[] options = {"Rematch", "Export History", "Main Menu"};
+            while (true) {
+                int choice = JOptionPane.showOptionDialog(this,
+                    endMessage + "\nWhat would you like to do?",
+                    "Game Over",
+                    JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.INFORMATION_MESSAGE,
+                    null,
+                    options,
+                    "Rematch");
+
+                if (choice == 0) {
+                    if (vsBot) startBotGame();
+                    else if (out != null) {
+                        out.println("REMATCH:REQUEST");
+                        logArea.append("System: Rematch requested. Waiting for opponent...\n");
+                    }
+                    break;
+                } else if (choice == 1) {
+                    exportHistory();
+                    // loop back to let player pick Rematch or Main Menu
+                } else {
+                    if (!vsBot && out != null) out.println("REMATCH:DECLINE");
+                    returnToMenu();
+                    break;
                 }
-            } else {
-                if (!vsBot && out != null) {
-                    out.println("REMATCH:DECLINE");
-                }
-                returnToMenu();
             }
         });
+    }
+
+    private void exportHistory() {
+        File dir = new File("history");
+        dir.mkdirs();
+        String ts = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
+        File file = new File(dir, "game_" + ts + ".txt");
+        try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
+            pw.print(logArea.getText());
+            JOptionPane.showMessageDialog(this,
+                "Saved to " + file.getPath(), "Exported", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "Export failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void announceEndIfOver() {
