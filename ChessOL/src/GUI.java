@@ -206,7 +206,8 @@ public class GUI extends JFrame {
                 out.println("GAME:DRAW_OFFER");
                 logArea.append("System: Draw offer sent...\n");
             } else if (vsBot && !gameOver) {
-                logArea.append("System: Bot declines your draw offer.\n");
+                logArea.append("System: Bot accepted your draw offer.\n");
+                showGameOverDialog("Draw agreed.");
             }
         });
 
