@@ -222,20 +222,22 @@ public class GUI extends JFrame {
         add(cards);
         setVisible(true);
 
-        public void updateStatus() {
-            if (gameOver){
-                return;
-            } 
-            SwingUtilities.invokeLater(() -> {
-                if (game.whiteTurn == playingWhite) {
-                    statusLabel.setText("STATUS: YOUR TURN");
-                    statusLabel.setForeground(new Color(255, 87, 34));
-                } else {
-                    statusLabel.setText("STATUS: OPPONENT'S TURN");
-                    statusLabel.setForeground(new Color(208, 212, 219)); // Idle Gray
-                }
-            });
-        }
+    }
+    
+    public void updateStatus() {
+        if (gameOver){
+            return;
+        } 
+        
+        SwingUtilities.invokeLater(() -> {
+            if (game.whiteTurn == playingWhite) {
+                statusLabel.setText("STATUS: YOUR TURN");
+                statusLabel.setForeground(new Color(255, 87, 34));
+            } else {
+                statusLabel.setText("STATUS: OPPONENT'S TURN");
+                statusLabel.setForeground(new Color(208, 212, 219));
+            }
+        });
     }
 
     private void drawBattleBackground(Graphics2D g2, int W, int H) {
