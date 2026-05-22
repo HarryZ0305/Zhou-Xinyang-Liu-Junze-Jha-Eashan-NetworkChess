@@ -6,6 +6,9 @@ public class Game {
     Piece[][] board;
     Player whitePlayer, blackPlayer;
     boolean whiteTurn;
+    public ArrayList<Piece> capturedWhite = new ArrayList<>();
+    public ArrayList<Piece> capturedBlack = new ArrayList<>();
+
     public Game(){
         board = new Piece[8][8];
         for (int i = 0; i < 8; i++) {
@@ -66,6 +69,9 @@ public class Game {
             }
         }
         whiteTurn = src.whiteTurn;
+
+        capturedWhite = new ArrayList<>(src.capturedWhite);
+        capturedBlack = new ArrayList<>(src.capturedBlack);
     }
 
     private static Piece clonePiece(Piece p) {
@@ -230,8 +236,10 @@ public class Game {
         Piece captured = board[toRow][toCol];
         if(isWhite){
             blackPlayer.pieces.remove(captured);
+            capturedBlack.add(captured);
         }else{
             whitePlayer.pieces.remove(captured);
+            capturedWhite.add(captured); 
         }
         return captured;
     }
