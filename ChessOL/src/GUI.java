@@ -32,6 +32,7 @@ public class GUI extends JFrame {
     private JPanel blackPlayerCard;
     private long whiteTimeMs = 0;
     private long blackTimeMs = 0;
+    private final java.util.Random botClockRng = new java.util.Random();
     private long lastTickMs = 0;
     private Timer chessClock;
     private static final long INITIAL_TIME_MS = 10L * 60 * 1000;
@@ -685,9 +686,7 @@ public class GUI extends JFrame {
         new Thread(() -> {
             SwingUtilities.invokeLater(() -> logArea.append("Bot is thinking...\n"));
 
-            long t0 = System.currentTimeMillis();
             int[] move = ChessBot.getMove(game);
-            long elapsed = System.currentTimeMillis() - t0;
 
             if (move == null) {
                 SwingUtilities.invokeLater(() -> logArea.append("Bot has no legal moves.\n"));
@@ -702,11 +701,24 @@ public class GUI extends JFrame {
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
                 if (game.isInCheck(true)) logArea.append("Check!\n");
                 game.whiteTurn = !game.whiteTurn;
+
+                // Bot plays instantly, but we charge its clock a realistic chunk of time.
+                long used = botThinkMillis();
+                blackTimeMs -= used;
+                if (blackTimeMs <= 0) {
+                    blackTimeMs = 0;
+                    updateClockLabels();
+                    stopGameClock();
+                    showGameOverDialog("Black ran out of time. White wins.");
+                    return;
+                }
+                updateClockLabels();
+
                 activeBoard.repaint();
                 whiteCapturedPanel.repaint();
                 blackCapturedPanel.repaint();
                 logArea.append("Bot moved " + fR + "," + fC + " -> " + tR + "," + tC
-                             + " (" + elapsed + " ms)\n");
+                             + " (used " + String.format("%.1f", used / 1000.0) + "s)\n");
                 announceEndIfOver();
             });
         }).start();
@@ -816,7 +828,7 @@ public class GUI extends JFrame {
                 showGameOverDialog("White ran out of time. Black wins.");
                 return;
             }
-        } else {
+        } else if (!vsBot) {
             blackTimeMs -= delta;
             if (blackTimeMs <= 0) {
                 blackTimeMs = 0;
@@ -828,6 +840,17 @@ public class GUI extends JFrame {
         }
         updateClockLabels();
         highlightActivePlayer();
+    }
+
+    //Simulated time the bot "spends" per move: 1–10s, weighted toward 3–5s.
+    private long botThinkMillis() {
+        double seconds;
+        if (botClockRng.nextDouble() < 0.65) {
+            seconds = 3.0 + botClockRng.nextDouble() * 2.0; //65% of the time: 3.0–5.0s
+        } else {
+            seconds = 1.0 + botClockRng.nextDouble() * 9.0; //35% of the time: 1.0–10.0s
+        }
+        return Math.round(seconds * 1000.0);
     }
 
     private void refreshPlayerNames() {
