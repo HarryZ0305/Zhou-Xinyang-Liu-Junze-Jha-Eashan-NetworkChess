@@ -647,8 +647,7 @@ public class GUI extends JFrame {
             game.promotion(toRow, toCol, isWhite, pawnPromotion);
         }
 
-        Piece king = game.getKing(!isWhite);
-        boolean givesCheck = game.isInCheck(king.row, king.col, !isWhite);
+        boolean givesCheck = game.isInCheck(!isWhite);
         if (givesCheck) logArea.append("Check!\n");
 
         game.whiteTurn = !game.whiteTurn;
@@ -701,8 +700,7 @@ public class GUI extends JFrame {
                 String promo = promoChar != -1 ? String.valueOf((char) promoChar) : "None";
                 game.Move(fR, fC, tR, tC, false);
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
-                Piece king = game.getKing(true);
-                if (game.isInCheck(king.row, king.col, true)) logArea.append("Check!\n");
+                if (game.isInCheck(true)) logArea.append("Check!\n");
                 game.whiteTurn = !game.whiteTurn;
                 activeBoard.repaint();
                 whiteCapturedPanel.repaint();
@@ -880,8 +878,7 @@ public class GUI extends JFrame {
 
     private void announceEndIfOver() {
         boolean sideToMove = game.whiteTurn;
-        Piece king = game.getKing(sideToMove);
-        boolean inCheck = game.isInCheck(king.row, king.col, sideToMove);
+        boolean inCheck = game.isInCheck(sideToMove);
         boolean hasMove = game.hasLegalMove(sideToMove);
         
         if (!hasMove && inCheck) {

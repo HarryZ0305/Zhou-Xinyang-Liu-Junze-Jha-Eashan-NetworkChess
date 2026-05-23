@@ -260,6 +260,13 @@ public class Game {
         return false;
     }
 
+    //Null-safe check test: finds the king itself, returns false if none exists.
+    public boolean isInCheck(boolean isWhite) {
+        Piece king = getKing(isWhite);
+        if (king == null) return false;
+        return isInCheck(king.row, king.col, isWhite);
+    }
+
     public boolean hasLegalMove(boolean isWhite) {
         ArrayList<Piece> snapshot = new ArrayList<>(
                 isWhite ? whitePlayer.pieces : blackPlayer.pieces);
