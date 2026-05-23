@@ -1,6 +1,7 @@
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.io.InputStream;
 
 public class Game {
     Piece[][] board;
@@ -32,14 +33,13 @@ public class Game {
         board[0][4] = new King(0, 4, false);
         board[7][4] = new King(7, 4, true);
         String name1,name2;
-        try{
-            Scanner scanner = new Scanner(new File("src/username.txt"));
-            name1=scanner.next();
-            name2=scanner.next();
-            scanner.close();
-        }catch(Exception e){
-            name1="Default Player 1";
-            name2="Default Player 2";
+        try (InputStream in = Resources.open("src/username.txt");
+            Scanner scanner = new Scanner(in)) {
+            name1 = scanner.next();
+            name2 = scanner.next();
+        } catch (Exception e) {
+            name1 = "Player 1";
+            name2 = "Player 2";
         }
         whitePlayer = new Player(name1, true);
         blackPlayer = new Player(name2, false);

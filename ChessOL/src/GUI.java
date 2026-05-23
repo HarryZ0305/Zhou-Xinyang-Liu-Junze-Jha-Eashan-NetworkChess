@@ -1076,20 +1076,20 @@ public class GUI extends JFrame {
     }
 
     private void loadImages() {
-        String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
-        String[] colors = {"White", "Black"};
-        try {
-            for (String pieceColor : colors) {
-                for (String pieceType : pieces) {
-                    String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
-                    Image imagePiece = ImageIO.read(new File(fileName));
-                    pieceImages.put(pieceColor + pieceType, imagePiece);
-                }
+    String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
+    String[] colors = {"White", "Black"};
+    for (String c : colors) {
+        for (String t : pieces) {
+            String rel = "ChessPieces/" + c + "Pieces/" + c + t + ".png";
+            try (InputStream in = Resources.open(rel)) {
+                if (in == null) { System.out.println("Missing asset: " + rel); continue; }
+                pieceImages.put(c + t, ImageIO.read(in));
+            } catch (IOException e) {
+                System.out.println("Error loading " + rel + ": " + e.getMessage());
             }
-        } catch (IOException e) {
-            System.out.println("Error loading images: " + e.getMessage());
         }
     }
+}
 
     private class ActiveBoardPanel extends JPanel {
         private static final Color light = new Color(208, 212, 219); 
