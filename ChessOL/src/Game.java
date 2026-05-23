@@ -314,6 +314,33 @@ public class Game {
         return king;
     }
 
+    //Deterministic snapshot of everything that affects legality: occupancy, piece identity/colour, castling rights (unmoved K/R), en-passant flag, side to move
+    public String stateSignature() {
+        StringBuilder sb = new StringBuilder(80);
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board[r][c];
+                if (p == null) { sb.append('.'); continue; }
+                char ch;
+                switch (p.getType()) {
+                    case "Pawn":   ch = 'p'; break;
+                    case "Knight": ch = 'n'; break;
+                    case "Bishop": ch = 'b'; break;
+                    case "Rook":   ch = 'r'; break;
+                    case "Queen":  ch = 'q'; break;
+                    case "King":   ch = 'k'; break;
+                    default:       ch = '?'; break;
+                }
+                sb.append(p.isWhite ? Character.toUpperCase(ch) : ch);
+                if ((p instanceof King || p instanceof Rook) && !p.moved) sb.append('*');
+                if (p instanceof Pawn && ((Pawn) p).firstMoveTwoSquares) sb.append('!');
+            }
+        }
+        sb.append(whiteTurn ? 'w' : 'b');
+        return sb.toString();
+    }
+
+
     public static void main(String[] args) {
         
     }

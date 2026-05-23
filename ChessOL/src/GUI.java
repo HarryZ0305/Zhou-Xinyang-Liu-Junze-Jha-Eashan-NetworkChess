@@ -660,8 +660,7 @@ public class GUI extends JFrame {
         if (vsBot) {
             if (!gameOver) triggerBotMove();
         } else {
-            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol
-                           + "," + isWhite + "," + pawnPromotion + "," + givesCheck;
+            String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion + "," + givesCheck + "," + game.stateSignature().hashCode();
             out.println(message);
             if (out.checkError()) logArea.append("System: Send failed, connection lost.\n");
             else logArea.append("Moved: " + message + "\n");
@@ -993,6 +992,15 @@ public class GUI extends JFrame {
                                 activeBoard.repaint();
                                 whiteCapturedPanel.repaint();
                                 blackCapturedPanel.repaint();
+                                if (parts.length >= 8) {
+                                    int peerSig = Integer.parseInt(parts[7]);
+                                    int localSig = game.stateSignature().hashCode();
+                                    if (localSig != peerSig) {
+                                        logArea.append("⚠ DESYNC: boards diverged (local=" + localSig + " peer=" + peerSig + "). Move not trusted.\n");
+                                        gameOver = true; //freeze play
+                                        stopGameClock();
+                                    }
+                                }
                                 announceEndIfOver();
                             });
                         } catch (Exception ex) {
@@ -1076,20 +1084,20 @@ public class GUI extends JFrame {
     }
 
     private void loadImages() {
-    String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
-    String[] colors = {"White", "Black"};
-    for (String c : colors) {
-        for (String t : pieces) {
-            String rel = "ChessPieces/" + c + "Pieces/" + c + t + ".png";
-            try (InputStream in = Resources.open(rel)) {
-                if (in == null) { System.out.println("Missing asset: " + rel); continue; }
-                pieceImages.put(c + t, ImageIO.read(in));
-            } catch (IOException e) {
-                System.out.println("Error loading " + rel + ": " + e.getMessage());
+        String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
+        String[] colors = {"White", "Black"};
+        try {
+            for (String pieceColor : colors) {
+                for (String pieceType : pieces) {
+                    String fileName = "ChessPieces/" + pieceColor + "Pieces/" + pieceColor + pieceType + ".png";
+                    Image imagePiece = ImageIO.read(new File(fileName));
+                    pieceImages.put(pieceColor + pieceType, imagePiece);
+                }
             }
+        } catch (IOException e) {
+            System.out.println("Error loading images: " + e.getMessage());
         }
     }
-}
 
     private class ActiveBoardPanel extends JPanel {
         private static final Color light = new Color(208, 212, 219); 
