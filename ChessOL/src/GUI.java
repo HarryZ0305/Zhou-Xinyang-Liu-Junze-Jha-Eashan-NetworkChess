@@ -9,19 +9,30 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 
+/**
+ * Top-level Swing window for the chess application. Inherits from JFrame and owns every
+ * piece of the user-facing state: the menu screen, the game screen (board + dashboard),
+ * the network socket, the bot adapter, the chess clock, and the captured-piece panels.
+ *
+ * The class drives three game modes through a single workflow — local play vs. a Bot,
+ * networked host (Server), and networked guest (Client). The board (ActiveBoardPanel)
+ * and capture displays (CapturedPanel) are inner classes so they can read the enclosing
+ * Game and image cache directly without verbose wiring.
+ */
 public class GUI extends JFrame {
 
+    // CardLayout lets the same JFrame swap between the main-menu screen and the game screen.
     private JPanel cards = new JPanel(new CardLayout());
-    private JTextArea logArea = new JTextArea();
-    private JTextField inputField = new JTextField();
-    private PrintWriter out;
-    Game game = new Game();
-    ActiveBoardPanel activeBoard;
-    private HashMap<String, Image> pieceImages = new HashMap<>();
-    private boolean gameOver = false;
-    private Socket currentSocket;
-    private boolean playingWhite = true;
-    private boolean vsBot = false;
+    private JTextArea logArea = new JTextArea(); // Scrolling log holding chat and move history; also the source for exportHistory().
+    private JTextField inputField = new JTextField(); // Single-line chat input; Enter triggers a CHAT: packet.
+    private PrintWriter out; // Write side of the socket; null when not connected.
+    Game game = new Game(); // The authoritative model. Re-created on rematch/new connection.
+    ActiveBoardPanel activeBoard; // Custom-painted board panel; constructed inside the constructor.
+    private HashMap<String, Image> pieceImages = new HashMap<>(); // Cache of sprite images keyed by "<Color><PieceType>".
+    private boolean gameOver = false; // Global gate that suppresses input, ticks, and dialogs after end-of-game.
+    private Socket currentSocket; // Held so returnToMenu() can close it cleanly.
+    private boolean playingWhite = true; // Which colour the local client controls; flipped for the joining peer.
+    private boolean vsBot = false; // True iff the current game is local-vs-bot rather than networked.
     private JLabel statusLabel = new JLabel("STATUS: WAITING...", SwingConstants.CENTER);
 
     private JLabel whiteNameLabel = new JLabel("White");
@@ -30,12 +41,12 @@ public class GUI extends JFrame {
     private JLabel blackClockLabel = new JLabel("10:00");
     private JPanel whitePlayerCard;
     private JPanel blackPlayerCard;
-    private long whiteTimeMs = 0;
-    private long blackTimeMs = 0;
-    private final java.util.Random botClockRng = new java.util.Random();
-    private long lastTickMs = 0;
-    private Timer chessClock;
-    private static final long INITIAL_TIME_MS = 10L * 60 * 1000;
+    private long whiteTimeMs = 0; // Remaining millis on White's clock; counted down by tickClock().
+    private long blackTimeMs = 0; // Remaining millis on Black's clock.
+    private final java.util.Random botClockRng = new java.util.Random(); // RNG that fakes a humanlike thinking time for the bot.
+    private long lastTickMs = 0; // Wall-clock timestamp of the previous tick — used to compute elapsed delta.
+    private Timer chessClock; // Swing Timer firing every 200 ms on the EDT.
+    private static final long INITIAL_TIME_MS = 10L * 60 * 1000; // 10 minutes per side — standard rapid-game budget.
 
     private String localPlayerName;
     private String opponentPlayerName;
@@ -43,6 +54,12 @@ public class GUI extends JFrame {
     CapturedPanel whiteCapturedPanel;
     CapturedPanel blackCapturedPanel;
 
+    /**
+     * Constructor — assembles the entire UI. Loads the piece sprite images, builds the
+     * menu screen (with a custom-painted battle background), builds the game screen
+     * (board on the left, dashboard with player cards, captured pieces, status, chat
+     * log and action buttons on the right), and wires every button/input listener.
+     */
     public GUI() {
         loadImages();
         setTitle("ChessOL");
@@ -276,6 +293,11 @@ public class GUI extends JFrame {
 
     }
     
+    /**
+     * Refreshes the STATUS banner to show whose turn it is from this client's perspective.
+     * Marshalled onto the Event Dispatch Thread because it may be called from the
+     * networking thread, and Swing components are not thread-safe.
+     */
     public void updateStatus() {
         if (gameOver){
             return;
@@ -292,6 +314,13 @@ public class GUI extends JFrame {
         });
     }
 
+    /**
+     * Custom paints a layered "medieval battle" backdrop behind the main menu using
+     * Java 2D primitives — gradient sky/ground, a glowing sun, smoke plumes, opposing
+     * armies of foot soldiers and horsemen, a clashing pair at centre, fallen soldiers,
+     * embedded arrows, a vignette, and a decorative gold border. Rendered entirely
+     * procedurally so no extra image assets are required at runtime.
+     */
     private void drawBattleBackground(Graphics2D g2, int W, int H) {
         if (W == 0 || H == 0){  //RadialGradientPaint throws if radius <= 0
             return;
@@ -605,6 +634,15 @@ public class GUI extends JFrame {
         g2.fillOval(sX - 2, rY - 12, 5, 5);
     }
 
+    /**
+     * Drives the lifecycle of a single human move. Validates the move against the Game's
+     * rule engine, prompts the player to choose a promotion piece if a pawn reaches the
+     * back rank, commits the move locally, flips the turn flag, repaints the board and
+     * captured panels, checks for game-over (mate/stalemate), and — depending on mode —
+     * either triggers the bot reply or transmits a MOVE packet to the peer over the
+     * socket. The transmitted packet also carries a hash of the resulting board state
+     * so the receiver can detect desynchronisation.
+     */
     private void attemptMove(int fromRow, int fromCol, int toRow, int toCol) {
         if (!vsBot && out == null) {
             logArea.append("System: Not connected yet.\n");
@@ -615,15 +653,18 @@ public class GUI extends JFrame {
         if (p == null) return;
         boolean isWhite = p.isWhite;
 
+        // Delegate to the rule engine so the GUI never bypasses any of Game's safety checks.
         if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
             logArea.append("Invalid move\n");
             return;
         }
 
+        // Detect promotion: a pawn arriving on the opposite back rank must be replaced.
         String pawnPromotion = "None";
         if (game.board[fromRow][fromCol] instanceof Pawn && ((toRow == 0 && isWhite) || (toRow == 7 && !isWhite))) {
-            
-            //Graphical Promotion Menu
+
+            // Graphical Promotion Menu — show the four legal promotion targets as scaled
+            // sprite icons so the player picks visually rather than typing a letter.
             String colorStr = isWhite ? "White" : "Black";
             Object[] options = {
                 new ImageIcon(pieceImages.get(colorStr + "Queen").getScaledInstance(60, 60, Image.SCALE_SMOOTH)),
@@ -632,31 +673,35 @@ public class GUI extends JFrame {
                 new ImageIcon(pieceImages.get(colorStr + "Knight").getScaledInstance(60, 60, Image.SCALE_SMOOTH))
             };
             
-            int choice = JOptionPane.showOptionDialog(this, 
+            int choice = JOptionPane.showOptionDialog(this,
                 "Choose a piece to promote to:", "Pawn Promotion",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, 
+                JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE,
                 null, options, options[0]);
-                
+
+            // Map the dialog's index to the single-character promotion code expected by Game.promotion().
             if (choice == 1) pawnPromotion = "R";
             else if (choice == 2) pawnPromotion = "B";
             else if (choice == 3) pawnPromotion = "N";
-            else pawnPromotion = "Q"; // Defaults to Queen if user closes dialog
+            else pawnPromotion = "Q"; // Defaults to Queen if user closes dialog without choosing — almost always the right pick.
         }
 
-        game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+        game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Commit the move to the shared Game model.
         if (!pawnPromotion.equals("None")) {
-            game.promotion(toRow, toCol, isWhite, pawnPromotion);
+            game.promotion(toRow, toCol, isWhite, pawnPromotion); // Replace the pawn on the back rank with the chosen piece.
         }
 
-        boolean givesCheck = game.isInCheck(!isWhite);
+        boolean givesCheck = game.isInCheck(!isWhite); // Test whether the OPPONENT's king is now in check.
         if (givesCheck) logArea.append("Check!\n");
 
-        game.whiteTurn = !game.whiteTurn;
-        activeBoard.repaint();
-        whiteCapturedPanel.repaint();
+        game.whiteTurn = !game.whiteTurn; // Hand the turn over so canMove() will reject moves from the moved side.
+        activeBoard.repaint(); // Trigger paintComponent to redraw the new board state.
+        whiteCapturedPanel.repaint(); // Refresh capture displays in case this move took a piece.
         blackCapturedPanel.repaint();
-        announceEndIfOver();
+        announceEndIfOver(); // Detect mate or stalemate before the next click is accepted.
 
+        // Mode-dependent follow-up. Bot mode kicks the AI; network mode encodes the move
+        // (plus a hash of the resulting position) into a comma-delimited string and
+        // ships it through the PrintWriter so the peer can replay it on their board.
         if (vsBot) {
             if (!gameOver) triggerBotMove();
         } else {
@@ -667,6 +712,11 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Resets state for a fresh game against the local bot. Sets vsBot, instantiates a new
+     * Game in the standard starting position, renames the black player to "Bot", swaps
+     * to the WORK card, repaints, and starts the chess clock.
+     */
     private void startBotGame() {
         vsBot = true;
         playingWhite = true;
@@ -682,30 +732,39 @@ public class GUI extends JFrame {
         startGameClock();
     }
 
+    /**
+     * Runs the bot's minimax search on a background worker thread so the search does
+     * not freeze the Event Dispatch Thread (which would lock the entire UI). When a
+     * move is found, the actual state mutations and repaints are marshalled back onto
+     * the EDT via invokeLater — Swing components must only be touched on that thread.
+     * The bot's clock is then debited a simulated "thinking time" so its remaining
+     * time feels realistic even though the search itself returns nearly instantly.
+     */
     private void triggerBotMove() {
-        new Thread(() -> {
+        new Thread(() -> { // Worker thread keeps the EDT free so the UI never freezes during search.
             SwingUtilities.invokeLater(() -> logArea.append("Bot is thinking...\n"));
 
-            int[] move = ChessBot.getMove(game);
+            int[] move = ChessBot.getMove(game); // Heavy compute happens here, OFF the EDT.
 
             if (move == null) {
                 SwingUtilities.invokeLater(() -> logArea.append("Bot has no legal moves.\n"));
                 return;
             }
 
+            // Copy primitives into final locals so the lambda below can capture them safely.
             final int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
             final int promoChar = move[4];
-            SwingUtilities.invokeLater(() -> {
+            SwingUtilities.invokeLater(() -> { // Bounce mutations back onto the EDT — Swing is single-threaded.
                 String promo = promoChar != -1 ? String.valueOf((char) promoChar) : "None";
-                game.Move(fR, fC, tR, tC, false);
+                game.Move(fR, fC, tR, tC, false); // The bot always plays Black in this app.
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
-                if (game.isInCheck(true)) logArea.append("Check!\n");
+                if (game.isInCheck(true)) logArea.append("Check!\n"); // Notify if the bot's move checks White.
                 game.whiteTurn = !game.whiteTurn;
 
-                // Bot plays instantly, but we charge its clock a realistic chunk of time.
+                // Bot plays instantly, but we charge its clock a realistic chunk of time so the timer looks human.
                 long used = botThinkMillis();
-                blackTimeMs -= used;
-                if (blackTimeMs <= 0) {
+                blackTimeMs -= used; // Debit the bot's clock by the simulated think time.
+                if (blackTimeMs <= 0) { // The bot can lose on time too — guard against negative remaining time.
                     blackTimeMs = 0;
                     updateClockLabels();
                     stopGameClock();
@@ -724,6 +783,13 @@ public class GUI extends JFrame {
         }).start();
     }
 
+    /**
+     * Final-screen dispatcher when the game ends (mate, stalemate, resignation, timeout,
+     * or draw agreed). Flags gameOver to freeze further input, stops the clock, and
+     * shows a modal dialog offering Rematch / Export History / Main Menu. The dialog
+     * loops on Export History so the player can export and then still pick another
+     * action; rematch sends a network REMATCH:REQUEST when applicable.
+     */
     private void showGameOverDialog(String endMessage) {
         logArea.append(endMessage + "\n");
         gameOver = true;
@@ -760,6 +826,15 @@ public class GUI extends JFrame {
         });
     }
 
+    /**
+     * Writes the contents of the chat/move log to a uniquely named text file under a
+     * "history/" directory. File I/O implementation: the directory is created lazily
+     * via mkdirs() so the first export works on a fresh install, the filename is
+     * stamped with the current date and time so consecutive exports never overwrite
+     * each other, and the PrintWriter/FileWriter pair is opened in a try-with-resources
+     * block so the file handle is always released — even if the write throws. Success
+     * and failure are both reported back to the user through a modal dialog.
+     */
     private void exportHistory() {
         File dir = new File("history");
         dir.mkdirs();
@@ -775,6 +850,10 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Constructs one of the two side-by-side "player cards" on the dashboard, each
+     * showing a name on the left and a clock on the right inside a bordered panel.
+     */
     private JPanel buildPlayerCard(JLabel nameLbl, JLabel clockLbl) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(new Color(26, 32, 44));
@@ -794,6 +873,11 @@ public class GUI extends JFrame {
         return card;
     }
 
+    /**
+     * Initialises both players' clocks to the standard 10-minute budget and starts a
+     * recurring Swing Timer that ticks every 200 ms. The Timer fires tickClock() on the
+     * Event Dispatch Thread so all clock-related UI updates are automatically thread-safe.
+     */
     private void startGameClock() {
         whiteTimeMs = INITIAL_TIME_MS;
         blackTimeMs = INITIAL_TIME_MS;
@@ -812,6 +896,13 @@ public class GUI extends JFrame {
         if (chessClock != null) chessClock.stop();
     }
 
+    /**
+     * Per-tick chess-clock update. Computes the elapsed wall-clock time since the last
+     * tick (capped at 5 s so a modal dialog or window freeze doesn't accidentally burn
+     * the whole budget), then subtracts that delta from whichever side is on move. If
+     * the active side's time hits zero the game ends with a timeout result. In bot mode
+     * the bot's clock is debited inside triggerBotMove() instead, so only the human's side counts down here.
+     */
     private void tickClock() {
         if (game == null) return;
         long now = System.currentTimeMillis();
@@ -899,6 +990,11 @@ public class GUI extends JFrame {
             BorderFactory.createEmptyBorder(8, 12, 8, 12)));
     }
 
+    /**
+     * Checks for game-over after every move and routes to the correct end-of-game dialog.
+     * Combines Game.isInCheck() and Game.hasLegalMove() to distinguish checkmate (no
+     * moves AND in check) from stalemate (no moves AND not in check).
+     */
     private void announceEndIfOver() {
         boolean sideToMove = game.whiteTurn;
         boolean inCheck = game.isInCheck(sideToMove);
@@ -912,6 +1008,21 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Bootstraps a networked two-player session and runs the long-lived receive loop on
+     * a background worker thread. Responsibilities:
+     *  - establish the TCP connection (open a ServerSocket and accept() if hosting,
+     *    or open a Socket to the supplied IP/port if joining);
+     *  - assign colours — the server flips a coin, broadcasts COLOR:, and exchanges
+     *    NAME: messages so both sides know who they're playing;
+     *  - read newline-delimited text packets from BufferedReader and route each one by
+     *    its prefix (COLOR:, NAME:, CHAT:, MOVE:, GAME:RESIGN/DRAW_*, REMATCH:*);
+     *  - for MOVE packets, parse the comma-separated payload back into ints/booleans,
+     *    replay the move on the local Game, repaint, and compare the embedded
+     *    state-signature hash against the locally computed hash to detect desync;
+     *  - marshal every UI mutation back onto the Event Dispatch Thread via invokeLater
+     *    because Swing components are not thread-safe.
+     */
     private void startNetwork(boolean isServer, String ip, int port) {
         game = new Game();
         gameOver = false;
@@ -924,6 +1035,10 @@ public class GUI extends JFrame {
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
         new Thread(() -> {
             try {
+                // Connection setup: server uses a ServerSocket and blocks on accept();
+                // client opens a direct Socket to the supplied host/port. The
+                // try-with-resources on ServerSocket guarantees the listening port is
+                // released as soon as a client has connected (we only need one peer).
                 Socket s;
                 if (isServer) {
                     logArea.append("Waiting for client on " + port + "...\n");
@@ -941,14 +1056,14 @@ public class GUI extends JFrame {
 
                 logArea.append("System: Connected!\n");
                 if (isServer) {
-                    playingWhite = Math.random() < 0.5;
-                    out.println("COLOR:" + (playingWhite ? "black" : "white"));
-                    // Server colour already decided — apply own name and announce.
+                    playingWhite = Math.random() < 0.5; // Random colour assignment so the host has no built-in side preference.
+                    out.println("COLOR:" + (playingWhite ? "black" : "white")); // Tell the client which colour IT plays (the opposite of the host).
+                    // Server colour already decided — apply own name and announce it back to the client.
                     SwingUtilities.invokeLater(() -> {
                         applyMyName();
                         refreshPlayerNames();
                     });
-                    out.println("NAME:" + localPlayerName);
+                    out.println("NAME:" + localPlayerName); // Broadcast the host's name so the client can label the opponent card.
                 }
                 SwingUtilities.invokeLater(() -> {
                     activeBoard.repaint();
@@ -956,62 +1071,74 @@ public class GUI extends JFrame {
                     blackCapturedPanel.repaint();
                     startGameClock();
                 });
+                // Receive loop — wraps the socket's raw byte stream in a BufferedReader so
+                // packets can be consumed one line at a time. Each line begins with a short
+                // tag (COLOR:, NAME:, CHAT:, MOVE:, GAME:..., REMATCH:...) that determines
+                // how the payload is parsed and which UI action is triggered.
                 BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
                 String line;
-                while ((line = in.readLine()) != null) {
+                while ((line = in.readLine()) != null) { // readLine blocks until a newline or the socket closes (returns null).
                     if (line.startsWith("COLOR:")) {
-                        boolean clientIsWhite = line.substring(6).equals("white");
+                        boolean clientIsWhite = line.substring(6).equals("white"); // Strip "COLOR:" and parse the colour the server assigned.
                         SwingUtilities.invokeLater(() -> {
-                            playingWhite = clientIsWhite;
+                            playingWhite = clientIsWhite; // Adopt the colour decided by the server side.
                             applyMyName();
                             refreshPlayerNames();
                             activeBoard.repaint();
                             whiteCapturedPanel.repaint();
                             blackCapturedPanel.repaint();
                         });
-                        // Client now knows its colour — tell server its name.
+                        // Client now knows its colour — reply with its own name so the server can populate the opponent card.
                         out.println("NAME:" + localPlayerName);
                     } else if (line.startsWith("NAME:")) {
-                        String oppName = line.substring(5);
+                        String oppName = line.substring(5); // Strip the "NAME:" prefix to recover the raw username string.
                         SwingUtilities.invokeLater(() -> {
                             opponentPlayerName = oppName;
-                            applyOpponentName();
+                            applyOpponentName(); // Routes the name to whichever Player object represents the opponent.
                             refreshPlayerNames();
                         });
                     } else if (line.startsWith("CHAT:")) {
-                        String chatMsg = line.substring(5);
+                        String chatMsg = line.substring(5); // Strip "CHAT:" to leave just the chat body.
                         SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + chatMsg + "\n"));
                     } else if (line.startsWith("MOVE:")) {
-                        String message = line.substring(5);
-                        String[] parts = message.split(",");
+                        // MOVE payload schema: from/to coordinates, mover colour, promotion
+                        // code, check flag, and (optionally) a state-signature hash. Strings
+                        // are parsed back into ints/booleans for replay on the local Game.
+                        String message = line.substring(5); // Strip "MOVE:" to expose the comma-separated payload.
+                        String[] parts = message.split(","); // Split into fields: from/to coords, colour, promo, check, sig.
                         try {
-                            int fromRow = Integer.parseInt(parts[0]);
+                            int fromRow = Integer.parseInt(parts[0]); // Source row index parsed from the wire format.
                             int fromCol = Integer.parseInt(parts[1]);
                             int toRow = Integer.parseInt(parts[2]);
                             int toCol = Integer.parseInt(parts[3]);
-                            boolean isWhite = Boolean.parseBoolean(parts[4]);
-                            String pawnPromotion = parts[5];
-                            boolean isCheck = Boolean.parseBoolean(parts[6]);
+                            boolean isWhite = Boolean.parseBoolean(parts[4]); // Which colour just moved — needed for capture routing.
+                            String pawnPromotion = parts[5]; // "None" or one of Q/R/B/N.
+                            boolean isCheck = Boolean.parseBoolean(parts[6]); // Sender's claim that this move gives check.
                             SwingUtilities.invokeLater(() -> {
                                 logArea.append("Moved:" + message + "\n");
-                                
-                                // Removed the isInCheck parameter from canMove
+
+                                // Re-validate the peer's move against OUR rule engine. If the local board
+                                // disagrees that the move is legal, drop it rather than risk a desync.
                                 if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
                                     logArea.append("Invalid move received from peer\n");
                                     return;
                                 }
-                                game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+                                game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Replay the move locally so both boards converge.
                                 if (!pawnPromotion.equals("None")) {
-                                    game.promotion(toRow, toCol, isWhite, pawnPromotion);
+                                    game.promotion(toRow, toCol, isWhite, pawnPromotion); // Apply the chosen promotion piece.
                                 }
-                            
+
                                 if (isCheck) {
                                     logArea.append("In Check!\n");
                                 }
-                                game.whiteTurn = !game.whiteTurn;
+                                game.whiteTurn = !game.whiteTurn; // Mirror the turn flip the sender already performed.
                                 activeBoard.repaint();
                                 whiteCapturedPanel.repaint();
                                 blackCapturedPanel.repaint();
+                                // Desync detection: each peer hashes its own post-move board
+                                // state and compares it against the hash the sender embedded
+                                // in the packet. A mismatch means the two boards no longer
+                                // agree — fairer to freeze play than to silently continue.
                                 if (parts.length >= 8) {
                                     int peerSig = Integer.parseInt(parts[7]);
                                     int localSig = game.stateSignature().hashCode();
@@ -1103,6 +1230,11 @@ public class GUI extends JFrame {
         }).start();
     }
 
+    /**
+     * Eagerly loads all twelve piece sprites (six piece types x two colours) from disk
+     * into a HashMap keyed by "<Color><PieceType>" so paintComponent() can look them up
+     * in O(1). Doing this once at construction keeps the render loop disk-free.
+     */
     private void loadImages() {
         String[] pieces = {"Pawn", "Rook", "Knight", "Bishop", "Queen", "King"};
         String[] colors = {"White", "Black"};
@@ -1119,12 +1251,21 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Inner JPanel subclass that renders the 8x8 board and processes the player's mouse
+     * input. Two-click selection model: the first click selects a friendly piece, the
+     * second click either moves it (if legal), deselects it (if the same square is
+     * clicked again), or transfers selection to another friendly piece. The board is
+     * flipped for the Black player so the player's own pieces are always at the bottom.
+     */
     private class ActiveBoardPanel extends JPanel {
-        private static final Color light = new Color(208, 212, 219); 
-        private static final Color dark  = new Color(74, 85, 104);   
+        private static final Color light = new Color(208, 212, 219);
+        private static final Color dark  = new Color(74, 85, 104);
         private int selectedRow = -1;
         private int selectedCol = -1;
-        
+
+        // True when the local player is Black — the board is drawn rotated 180 degrees
+        // so the player's own pieces sit at the bottom regardless of colour.
         private boolean flipped(){
             return !playingWhite;
         }
@@ -1136,16 +1277,20 @@ public class GUI extends JFrame {
                     if (game == null || (!vsBot && out == null) || gameOver){
                         return;
                     } 
+                    // Convert pixel coordinates back to board indices. The display
+                    // coordinates may be flipped (Black's perspective), so we un-flip
+                    // before reading/writing the actual game.board 2D array.
                     int w = getWidth(), h = getHeight();
                     int sq = Math.min(w, h) / 8;
                     int displayCol = e.getX() / sq;
                     int displayRow = e.getY() / sq;
                     if (displayCol >= 8 || displayRow >= 8){
                         return;
-                    } 
+                    }
                     int col = flipped() ? 7 - displayCol : displayCol;
                     int row = flipped() ? 7 - displayRow : displayRow;
                     if (selectedRow == -1) {
+                        // No piece selected yet: first click must land on a friendly piece whose colour matches the turn.
                         Piece p = game.board[row][col];
                         if (p != null && p.isWhite == game.whiteTurn && p.isWhite == playingWhite) {
                             selectedRow = row;
@@ -1154,21 +1299,21 @@ public class GUI extends JFrame {
                         }
                     } else {
                         if (selectedRow == row && selectedCol == col) {
-                            //Deselect if clicking the same piece twice
+                            // Same-square click toggles the selection off — gives the player an escape hatch.
                             selectedRow = -1;
                             selectedCol = -1;
                             repaint();
                         } else {
                             Piece targetP = game.board[row][col];
-                            //Transfer selection when click on same color piece
+                            // Transfer selection when clicking another friendly piece — feels natural and skips an extra deselect click.
                             if (targetP != null && targetP.isWhite == game.whiteTurn && targetP.isWhite == playingWhite) {
                                 selectedRow = row;
                                 selectedCol = col;
                                 repaint();
                             } else {
-                                //Otherwise, attempt the move
+                                // Otherwise treat the second click as the move destination.
                                 attemptMove(selectedRow, selectedCol, row, col);
-                                selectedRow = -1;
+                                selectedRow = -1; // Clear selection so the next move starts fresh.
                                 selectedCol = -1;
                                 repaint();
                             }
@@ -1178,6 +1323,14 @@ public class GUI extends JFrame {
             });
         }
 
+        /**
+         * Renders the board in four ordered layers (drawn back-to-front so each layer
+         * can paint over the previous one): (1) the alternating light/dark squares,
+         * (2) the orange highlight on the currently selected square, (3) move-hint
+         * markers — solid dots on empty legal targets and hollow rings on capture
+         * targets, computed by polling Game.canMove() for every destination square —
+         * and (4) the piece sprites looked up from the pre-loaded image cache.
+         */
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -1185,42 +1338,43 @@ public class GUI extends JFrame {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
             int sq = Math.min(w, h) / 8;
-            
-            //Draw board squares
+
+            // Draw board squares — alternating light/dark colour pattern over the 8x8 grid.
             for (int row = 0; row < 8; row++) {
                 for (int col = 0; col < 8; col++) {
-                    int dr = flipped() ? 7 - row : row;
-                    int dc = flipped() ? 7 - col : col;
-                    g2.setColor((row + col) % 2 == 0 ? light : dark);
+                    int dr = flipped() ? 7 - row : row; // Flip the display row when the local player is Black.
+                    int dc = flipped() ? 7 - col : col; // Same flip applied to columns so the whole board rotates 180.
+                    g2.setColor((row + col) % 2 == 0 ? light : dark); // Classic chequerboard: even-parity squares are light.
                     g2.fillRect(dc * sq, dr * sq, sq, sq);
                 }
             }
 
-            //Draw selection highlight
+            // Draw selection highlight — orange tint on the square the player has clicked.
             if (selectedRow != -1 && selectedCol != -1) {
                 int dr = flipped() ? 7 - selectedRow : selectedRow;
                 int dc = flipped() ? 7 - selectedCol : selectedCol;
-                g2.setColor(new Color(255, 87, 34, 180));
+                g2.setColor(new Color(255, 87, 34, 180)); // Semi-transparent orange so the piece below remains visible.
                 g2.fillRect(dc * sq, dr * sq, sq, sq);
             }
 
-            //Draw valid move highlights
+            // Draw valid move highlights — dots/rings that show every legal destination for the selected piece.
             if (selectedRow != -1 && selectedCol != -1 && game != null) {
                 Piece selectedPiece = game.board[selectedRow][selectedCol];
                 if (selectedPiece != null) {
-                    g2.setColor(new Color(0, 0, 0, 60)); 
-                    
+                    g2.setColor(new Color(0, 0, 0, 60)); // Faint black so the markers do not dominate the board art.
+
                     for (int r = 0; r < 8; r++) {
                         for (int c = 0; c < 8; c++) {
+                            // Poll the rule engine for every square; cheap because canMove() short-circuits quickly on invalid targets.
                             if (game.canMove(selectedRow, selectedCol, r, c, selectedPiece.isWhite)) {
                                 int dr = flipped() ? 7 - r : r;
                                 int dc = flipped() ? 7 - c : c;
-                                
-                                int radius = sq / 6;
+
+                                int radius = sq / 6; // Marker size scales with the board so it looks right at any window size.
                                 int centerX = dc * sq + sq / 2;
                                 int centerY = dr * sq + sq / 2;
-                                
-                                //Draw hollow ring for captures, solid dot for empty squares
+
+                                // Hollow ring on capture targets, solid dot on empty squares — standard chess-app convention.
                                 if (game.board[r][c] != null) {
                                     g2.setStroke(new BasicStroke(4f));
                                     g2.drawOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
@@ -1233,19 +1387,19 @@ public class GUI extends JFrame {
                 }
             }
 
-            // Draw pieces
+            // Draw pieces — top layer so sprites cover the squares and highlights below.
             if (game != null && game.board != null) {
                 for (int row = 0; row < 8; row++) {
                     for (int col = 0; col < 8; col++) {
                         Piece p = game.board[row][col];
                         if (p != null) {
                             String colorStr = p.isWhite ? "White" : "Black";
-                            String key = colorStr + p.getType();
+                            String key = colorStr + p.getType(); // HashMap key matches loadImages()'s naming scheme.
                             Image img = pieceImages.get(key);
                             if (img != null) {
                                 int dr = flipped() ? 7 - row : row;
                                 int dc = flipped() ? 7 - col : col;
-                                g2.drawImage(img, dc * sq, dr * sq, sq, sq, this);
+                                g2.drawImage(img, dc * sq, dr * sq, sq, sq, this); // Scale the sprite to fit one board square exactly.
                             }
                         }
                     }
@@ -1254,6 +1408,12 @@ public class GUI extends JFrame {
         }
     }
 
+    /**
+     * Tears down the active game/connection and switches the CardLayout back to the
+     * main menu. Closes the socket and PrintWriter so the receive thread's readLine()
+     * returns null and the worker exits cleanly, then clears player-name fields so the
+     * next session starts from a known state.
+     */
     private void returnToMenu() {
         stopGameClock();
         try {
@@ -1269,25 +1429,36 @@ public class GUI extends JFrame {
         ((CardLayout)cards.getLayout()).show(cards, "MENU");
     }
 
+    /**
+     * Inner JPanel subclass that renders one side's captured pieces as a small horizontal
+     * row of sprite icons. Constructed once per colour and added to the dashboard; calling
+     * repaint() is enough to refresh after every capture because paintComponent() always
+     * reads the latest ArrayList from the Game.
+     */
     private class CapturedPanel extends JPanel {
         private boolean isWhite;
-        
+
         public CapturedPanel(boolean isWhite) {
             this.isWhite = isWhite;
             setPreferredSize(new Dimension(200, 35));
             setOpaque(false);
         }
 
+        /**
+         * Iterates the appropriate captured-piece ArrayList and draws each piece's sprite
+         * at a fixed 30x30 size, shifting x by 15 px per piece so the icons overlap
+         * slightly — a compact display that scales as more pieces are captured.
+         */
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             if (game == null) return;
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            
-            //Get the list of captured pieces
+
+            //Get the list of captured pieces from the Game model
             ArrayList<Piece> captured = isWhite ? game.capturedWhite : game.capturedBlack;
-            
+
             int x = 0;
             for (Piece p : captured) {
                 String key = (isWhite ? "White" : "Black") + p.getType();
