@@ -23,7 +23,7 @@ public class GUI extends JFrame {
 
     // CardLayout lets the same JFrame swap between the main-menu screen and the game screen.
     private JPanel cards = new JPanel(new CardLayout());
-    private JTextArea logArea = new JTextArea(); // Scrolling log holding chat and move history; also the source for exportHistory().
+    private LogPane logArea = new LogPane(); // Scrolling log holding chat and move history; also the source for exportHistory().
     private JTextField inputField = new JTextField(); // Single-line chat input; Enter triggers a CHAT: packet.
     private PrintWriter out; // Write side of the socket; null when not connected.
     Game game = new Game(); // The authoritative model. Re-created on rematch/new connection.
@@ -164,40 +164,45 @@ public class GUI extends JFrame {
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
 
-        JPanel topSection = new JPanel(new BorderLayout(0, 10));
-        topSection.setOpaque(false);
-
-        //Top: Player cards + Status
-        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        statusLabel.setForeground(new Color(247, 250, 252));
-        statusLabel.setOpaque(true);
-        statusLabel.setBackground(new Color(26, 32, 44));
-        statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        topSection.add(statusLabel, BorderLayout.NORTH);
-
-        whiteCapturedPanel = new CapturedPanel(true);
-        blackCapturedPanel = new CapturedPanel(false);
-        JPanel capturedContainer = new JPanel(new GridLayout(2, 1, 0, 5));
-        capturedContainer.setOpaque(false);
-        capturedContainer.add(whiteCapturedPanel); // White pieces captured by Black
-        capturedContainer.add(blackCapturedPanel); // Black pieces captured by White
-        topSection.add(capturedContainer, BorderLayout.CENTER);
-
-        dashboardPanel.add(topSection, BorderLayout.NORTH);
-
+        //Dashboard top section
+        JPanel topContainer = new JPanel(new BorderLayout(0, 10));
+        topContainer.setOpaque(false);
+        
         whitePlayerCard = buildPlayerCard(whiteNameLabel, whiteClockLabel);
         blackPlayerCard = buildPlayerCard(blackNameLabel, blackClockLabel);
 
+        //1. Player Cards go at the very top
         JPanel topInfo = new JPanel();
         topInfo.setOpaque(false);
         topInfo.setLayout(new BoxLayout(topInfo, BoxLayout.Y_AXIS));
         topInfo.add(blackPlayerCard);
         topInfo.add(Box.createVerticalStrut(6));
         topInfo.add(whitePlayerCard);
-        topInfo.add(Box.createVerticalStrut(8));
-        topInfo.add(statusLabel);
+        topContainer.add(topInfo, BorderLayout.NORTH);
 
-        dashboardPanel.add(topInfo, BorderLayout.NORTH);
+        //2. Status Label and Captured Pieces go below the cards
+        JPanel statusAndCaptures = new JPanel(new BorderLayout(0, 5));
+        statusAndCaptures.setOpaque(false);
+        
+        statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        statusLabel.setForeground(new Color(247, 250, 252));
+        statusLabel.setOpaque(true);
+        statusLabel.setBackground(new Color(26, 32, 44));
+        statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        statusAndCaptures.add(statusLabel, BorderLayout.NORTH);
+
+        whiteCapturedPanel = new CapturedPanel(true);
+        blackCapturedPanel = new CapturedPanel(false);
+        JPanel capturedContainer = new JPanel(new GridLayout(2, 1, 0, 5));
+        capturedContainer.setOpaque(false);
+        capturedContainer.add(whiteCapturedPanel); 
+        capturedContainer.add(blackCapturedPanel); 
+        statusAndCaptures.add(capturedContainer, BorderLayout.CENTER);
+
+        topContainer.add(statusAndCaptures, BorderLayout.CENTER);
+        
+        //Add the unified container safely to the dashboard
+        dashboardPanel.add(topContainer, BorderLayout.NORTH);
 
         //Middle: Chat & Logs
         logArea.setEditable(false);
@@ -690,25 +695,24 @@ public class GUI extends JFrame {
             game.promotion(toRow, toCol, isWhite, pawnPromotion); // Replace the pawn on the back rank with the chosen piece.
         }
 
-        boolean givesCheck = game.isInCheck(!isWhite); // Test whether the OPPONENT's king is now in check.
-        if (givesCheck) logArea.append("Check!\n");
+        boolean givesCheck = game.isInCheck(!isWhite); //Test whether the OPPONENT's king is now in check.
+        if (givesCheck) logArea.append("Check!\n", true);
 
-        game.whiteTurn = !game.whiteTurn; // Hand the turn over so canMove() will reject moves from the moved side.
-        activeBoard.repaint(); // Trigger paintComponent to redraw the new board state.
-        whiteCapturedPanel.repaint(); // Refresh capture displays in case this move took a piece.
+        game.whiteTurn = !game.whiteTurn; //Hand the turn over so canMove() will reject moves from the moved side.
+        activeBoard.repaint(); //Trigger paintComponent to redraw the new board state.
+        whiteCapturedPanel.repaint(); //Refresh capture displays in case this move took a piece.
         blackCapturedPanel.repaint();
-        announceEndIfOver(); // Detect mate or stalemate before the next click is accepted.
+        announceEndIfOver(); //Detect mate or stalemate before the next click is accepted.
 
-        // Mode-dependent follow-up. Bot mode kicks the AI; network mode encodes the move
-        // (plus a hash of the resulting position) into a comma-delimited string and
-        // ships it through the PrintWriter so the peer can replay it on their board.
         if (vsBot) {
             if (!gameOver) triggerBotMove();
         } else {
             String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion + "," + givesCheck + "," + game.stateSignature().hashCode();
             out.println(message);
+            
+            String pieceName = (isWhite ? "White " : "Black ") + p.getType();
             if (out.checkError()) logArea.append("System: Send failed, connection lost.\n");
-            else logArea.append("Moved: " + message + "\n");
+            else logArea.append(pieceName + " moved " + fromRow + "," + fromCol + " -> " + toRow + "," + toCol + "\n");
         }
     }
 
@@ -751,20 +755,23 @@ public class GUI extends JFrame {
                 return;
             }
 
-            // Copy primitives into final locals so the lambda below can capture them safely.
+            //Copy primitives into final locals so the lambda below can capture them safely.
             final int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
             final int promoChar = move[4];
-            SwingUtilities.invokeLater(() -> { // Bounce mutations back onto the EDT — Swing is single-threaded.
+            SwingUtilities.invokeLater(() -> { //Bounce mutations back onto the EDT
+                Piece p = game.board[fR][fC];
+                String pieceName = (p != null) ? "Black " + p.getType() : "Piece";
+
                 String promo = promoChar != -1 ? String.valueOf((char) promoChar) : "None";
-                game.Move(fR, fC, tR, tC, false); // The bot always plays Black in this app.
+                game.Move(fR, fC, tR, tC, false); //The bot always plays Black in this app.
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
-                if (game.isInCheck(true)) logArea.append("Check!\n"); // Notify if the bot's move checks White.
+                if (game.isInCheck(true)) logArea.append("Check!\n", true); 
                 game.whiteTurn = !game.whiteTurn;
 
-                // Bot plays instantly, but we charge its clock a realistic chunk of time so the timer looks human.
+                //Bot plays instantly, but we charge its clock a realistic chunk of time.
                 long used = botThinkMillis();
-                blackTimeMs -= used; // Debit the bot's clock by the simulated think time.
-                if (blackTimeMs <= 0) { // The bot can lose on time too — guard against negative remaining time.
+                blackTimeMs -= used; 
+                if (blackTimeMs <= 0) { 
                     blackTimeMs = 0;
                     updateClockLabels();
                     stopGameClock();
@@ -776,7 +783,7 @@ public class GUI extends JFrame {
                 activeBoard.repaint();
                 whiteCapturedPanel.repaint();
                 blackCapturedPanel.repaint();
-                logArea.append("Bot moved " + fR + "," + fC + " -> " + tR + "," + tC
+                logArea.append("Bot " + pieceName + " moved " + fR + "," + fC + " -> " + tR + "," + tC
                              + " (used " + String.format("%.1f", used / 1000.0) + "s)\n");
                 announceEndIfOver();
             });
@@ -1115,23 +1122,24 @@ public class GUI extends JFrame {
                             String pawnPromotion = parts[5]; // "None" or one of Q/R/B/N.
                             boolean isCheck = Boolean.parseBoolean(parts[6]); // Sender's claim that this move gives check.
                             SwingUtilities.invokeLater(() -> {
-                                logArea.append("Moved:" + message + "\n");
-
-                                // Re-validate the peer's move against OUR rule engine. If the local board
-                                // disagrees that the move is legal, drop it rather than risk a desync.
+                                Piece p = game.board[fromRow][fromCol];
+                                String pieceName = (p != null) ? ((p.isWhite ? "White " : "Black ") + p.getType()) : "Piece";
+                                
+                                // Re-validate the peer's move against OUR rule engine.
                                 if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
                                     logArea.append("Invalid move received from peer\n");
                                     return;
                                 }
-                                game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Replay the move locally so both boards converge.
+                                game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Replay the move locally
                                 if (!pawnPromotion.equals("None")) {
-                                    game.promotion(toRow, toCol, isWhite, pawnPromotion); // Apply the chosen promotion piece.
+                                    game.promotion(toRow, toCol, isWhite, pawnPromotion);
                                 }
-
+                            
+                                logArea.append("Opponent " + pieceName + " moved " + fromRow + "," + fromCol + " -> " + toRow + "," + toCol + "\n");
                                 if (isCheck) {
-                                    logArea.append("In Check!\n");
+                                    logArea.append("In Check!\n", true);
                                 }
-                                game.whiteTurn = !game.whiteTurn; // Mirror the turn flip the sender already performed.
+                                game.whiteTurn = !game.whiteTurn; // Mirror the turn flip
                                 activeBoard.repaint();
                                 whiteCapturedPanel.repaint();
                                 blackCapturedPanel.repaint();
@@ -1468,6 +1476,26 @@ public class GUI extends JFrame {
                     x += 15;
                 }
             }
+        }
+    }
+
+    private class LogPane extends JTextPane {
+        public void append(String s) {
+            append(s, false);
+        }
+        public void append(String s, boolean bold) {
+            try {
+                javax.swing.text.StyledDocument doc = getStyledDocument();
+                javax.swing.text.SimpleAttributeSet style = new javax.swing.text.SimpleAttributeSet();
+                javax.swing.text.StyleConstants.setForeground(style, getForeground());
+                javax.swing.text.StyleConstants.setFontFamily(style, getFont().getFamily());
+                javax.swing.text.StyleConstants.setFontSize(style, getFont().getSize());
+                if (bold) {
+                    javax.swing.text.StyleConstants.setBold(style, true);
+                    javax.swing.text.StyleConstants.setForeground(style, new Color(255, 87, 34)); // Make it orange too!
+                }
+                doc.insertString(doc.getLength(), s, style);
+            } catch (Exception e) {}
         }
     }
 }
