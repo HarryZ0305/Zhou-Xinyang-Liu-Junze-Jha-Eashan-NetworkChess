@@ -1,42 +1,60 @@
-# ChessOL (Networked Java Chess)
+# ChessOL - Modern Web Multiplayer Chess
 
-A fully functional, multiplayer, graphical chess application built from scratch using Java Swing and Socket programming. ChessOL allows two players to connect over a network (LAN or WAN) and play a complete game of chess with real-time chat functionality.
+A premium, responsive, multiplayer chess web application built from scratch in HTML5, CSS3, and ES6. ChessOL features a custom chess engine, a client-side minimax bot with alpha-beta pruning, and serverless peer-to-peer online multiplayer powered by WebRTC.
 
-## 🚀 Features
+---
 
-* **Complete Chess Logic Engine:** Hand-coded validation for all piece movements.
-* **Advanced Rules Supported:** Fully supports Castling, En Passant, and Pawn Promotion.
-* **Client/Server Architecture:** Host a game as a Server or connect via IP as a Client.
-* **Automatic Board Flipping:** The board automatically flips so that the Client always views the board from Black's perspective and the Server from White's.
-* **Integrated Chat:** Send instant messages to your opponent directly through the game interface.
-* **Custom Graphics:** Features a beautifully custom-painted battle scene on the main menu and utilizes standard chess PNG sprites for gameplay.
+## ✨ Features
+
+* **Complete Chess Engine (`chess.js`):** Hand-coded validation for all movement rules, castling, en passant, pawn promotions, and draw logic (50-move clock, threefold repetition, and insufficient material).
+* **Minimax AI Bot (`bot.js`):** Play offline against an intelligent bot utilizing a 3-ply minimax depth search, alpha-beta pruning, and Piece-Square Table (PST) positional evaluation.
+* **Serverless WebRTC Multiplayer (`network.js`):** Host or join online multiplayer matches over the internet using PeerJS—no central servers or database required. Connections are established directly between players using a simple opponent code.
+* **Pass & Play (Local):** Play head-to-head local matches with a friend on the same screen.
+* **Interactive UI & Visual Polish:**
+  - Premium dark theme featuring smooth CSS glassmorphic panels and responsive grids.
+  - Automatic board flipping based on your assigned color (White on bottom for host, Black on bottom for client).
+  - Selected, last-move, and king-check highlighting.
+  - Movable piece mechanics with drag-and-drop or two-click actions.
+* **Procedural Sound Synthesis:** Dynamic click and alert audio synthesized directly in the browser via the native **Web Audio API** (no bulky audio assets required).
+* **SAN Log & PGN Export:** Records game history in Standard Algebraic Notation (SAN) in real-time, allowing you to download standard PGN logs at game end.
+
+---
 
 ## 📁 Project Structure
 
-* `src/App.java` - Application entry point.
-* `src/GUI.java` - Handles the Swing UI, canvas rendering, and Socket networking.
-* `src/Game.java` - The core engine. Handles board state, move validation, and check/checkmate detection.
-* `src/Piece.java` - Abstract base class representing a chess piece.
-* `src/Pawn.java`, `King.java`, `Rook.java`, etc. - Individual piece movement logic.
-* `ChessPieces/` - Directory containing the visual assets for the white and black pieces.
+* `index.html` - Application entry point containing structural screens, game board container, and modals.
+* `style.css` - Custom styling library defining dark mode variables, glassmorphism, responsive chess grids, and micro-animations.
+* `chess.js` - The core chess logic model, move validator, and algebraic generator.
+* `bot.js` - Standard minimax bot engine and PST tables.
+* `network.js` - WebRTC PeerJS networking layer and communication handlers.
+* `ui.js` - Controller orchestrating gameplay actions, timers, procedural sound events, and view states.
+* `ChessPieces/` - Sprites for White and Black pieces.
 
-## 🛠️ Prerequisites
+---
 
-* Java Development Kit (JDK) 8 or higher.
-* An IDE (Eclipse, VSCode, IntelliJ) or terminal capable of compiling Java source files.
+## 🎮 How to Play
 
-## 🎮 How to Run
+### 1. Locally (Double-click)
+Simply open the [index.html](index.html) file in any modern web browser. 
 
-1. Clone this repository.
-2. Ensure the `ChessPieces/` directory is located in the root of your working directory so the image loader can find the assets.
-3. Compile and run the `GUI.java` file.
-   ```bash
-   javac -d bin src/*.java
-   java -cp bin GUI
-4. To Play:
-   Player 1 (Host): Click Server. The game will begin waiting on port 8888.
-   Player 2 (Join): Click Client. Enter the IP address of Player 1 (use 127.0.0.1 if testing on the same computer) and connect.
+### 2. On a Local Server
+To run a local server:
+```bash
+# Using Python
+python -m http.server 8000
 
-## ⌨️ Controls
-Moving Pieces: Click a friendly piece to select it (it will highlight yellow). Click a valid destination square to move it.
-Chatting: Type in the text field at the bottom of the window and press Enter to send a message to your opponent.
+# Using Node.js (npx)
+npx serve
+```
+Then navigate to `http://localhost:8000` or `http://localhost:3000`.
+
+### 3. Deploying to GitHub Pages
+Since this is a fully static application, you can publish it directly to **GitHub Pages** by committing it to a repository and enabling Pages in the repository settings.
+
+---
+
+## ⌨️ Controls & Game Options
+
+* **Moving Pieces:** Click a piece to select it (or drag it). Valid destinations and captures will show visual dots/rings. Click the destination to complete the move, or drag and drop. Click the selected piece again to deselect.
+* **Draw Offer & Resign:** Buttons in the bottom-right control panel let you offer draws or resign.
+* **PGN Export:** Click "Export PGN" on the Game Over screen to download a standard PGN file of your match.
