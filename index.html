@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChessOL - Web Multiplayer Chess</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- PeerJS CDN for WebRTC P2P networking -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Main Menu Cards (CardLayout equivalent) -->
+        <div id="menu-screen" class="screen active">
+            <div class="battle-bg-procedural"></div>
+            <div class="menu-container glass">
+                <h1 class="title">ChessOL</h1>
+                <p class="subtitle">Multiplayer Network Chess</p>
+                
+                <div class="input-group">
+                    <label for="username-input">Enter Your Username</label>
+                    <input type="text" id="username-input" placeholder="Player" maxlength="15">
+                </div>
+
+                <div class="menu-buttons">
+                    <button id="btn-host" class="btn primary">🏰 Host Game</button>
+                    <div class="divider"><span>OR</span></div>
+                    <div class="join-group">
+                        <input type="text" id="join-id-input" placeholder="Enter Opponent Code">
+                        <button id="btn-join" class="btn secondary">⚔️ Join Game</button>
+                    </div>
+                    <div class="divider"><span>OR</span></div>
+                    <button id="btn-bot" class="btn accent">🤖 Play with Bot</button>
+                </div>
+
+                <div id="host-status" class="status-box hidden">
+                    <p>Waiting for client...</p>
+                    <div class="code-display">
+                        <span id="my-code">---</span>
+                        <button id="btn-copy-code" title="Copy Code">📋</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Game Workspace -->
+        <div id="game-screen" class="screen">
+            <div class="workspace">
+                <!-- Left: Chess Board Container -->
+                <div class="board-container">
+                    <!-- Opponent Player Info Card -->
+                    <div id="opponent-card" class="player-card">
+                        <span id="opponent-name" class="player-name">♚ Opponent</span>
+                        <span id="opponent-clock" class="player-clock">10:00</span>
+                    </div>
+
+                    <!-- The Chess Board Grid -->
+                    <div id="chess-board"></div>
+
+                    <!-- Local Player Info Card -->
+                    <div id="local-card" class="player-card active-turn">
+                        <span id="local-name" class="player-name">♔ You</span>
+                        <span id="local-clock" class="player-clock">10:00</span>
+                    </div>
+                </div>
+
+                <!-- Right: Game Dashboard -->
+                <div class="dashboard glass">
+                    <div class="dashboard-top">
+                        <div id="game-status">STATUS: YOUR TURN</div>
+                        
+                        <!-- Captured Pieces Panel -->
+                        <div class="captured-container">
+                            <div class="captured-row">
+                                <span class="captured-label">Captured White:</span>
+                                <div id="captured-white-list" class="captured-list"></div>
+                            </div>
+                            <div class="captured-row">
+                                <span class="captured-label">Captured Black:</span>
+                                <div id="captured-black-list" class="captured-list"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scrolling chat & moves tab -->
+                    <div class="log-tabs">
+                        <div class="tab-header">CHAT & MOVES</div>
+                        <div id="log-area" class="log-area"></div>
+                    </div>
+
+                    <!-- Input & Actions panel -->
+                    <div class="dashboard-bottom">
+                        <div class="chat-input-group">
+                            <input type="text" id="chat-input" placeholder="Type a message..." disabled>
+                            <button id="btn-send-chat" disabled>Send</button>
+                        </div>
+                        <div class="action-buttons">
+                            <button id="btn-offer-draw" class="btn control">🤝 Offer Draw</button>
+                            <button id="btn-resign" class="btn control warning">🏳️ Resign</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pawn Promotion Dialog Modal -->
+        <div id="promotion-modal" class="modal-overlay hidden">
+            <div class="modal-content glass">
+                <h3>Pawn Promotion</h3>
+                <p>Choose a piece to promote to:</p>
+                <div class="promotion-options">
+                    <div class="promo-option" data-promo="Q" title="Queen"><img src="" id="promo-img-Q" alt="Queen"></div>
+                    <div class="promo-option" data-promo="R" title="Rook"><img src="" id="promo-img-R" alt="Rook"></div>
+                    <div class="promo-option" data-promo="B" title="Bishop"><img src="" id="promo-img-B" alt="Bishop"></div>
+                    <div class="promo-option" data-promo="N" title="Knight"><img src="" id="promo-img-N" alt="Knight"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Dialog Modal -->
+        <div id="gameover-modal" class="modal-overlay hidden">
+            <div class="modal-content glass text-center">
+                <h2 id="gameover-title">Game Over</h2>
+                <p id="gameover-message">White won by checkmate.</p>
+                <div class="modal-actions">
+                    <button id="btn-rematch" class="btn primary">🔄 Rematch</button>
+                    <button id="btn-export-pgn" class="btn secondary">💾 Export PGN</button>
+                    <button id="btn-exit-menu" class="btn warning">🚪 Main Menu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script imports -->
+    <script src="chess.js"></script>
+    <script src="bot.js"></script>
+    <script src="network.js"></script>
+    <script src="ui.js"></script>
+</body>
+</html>
