@@ -5,57 +5,13 @@ public class Queen extends Piece {
 
     @Override
     public boolean checkRule(int toRow, int toCol, Piece[][] board) {
-        // Queen = Rook + Bishop combined
-    		
         boolean horizontal = toRow == row;
         boolean vertical = toCol == col;
         boolean diagonal = Math.abs(toRow - row) == Math.abs(toCol - col);
         
-        //Rook logic
-        if(horizontal || vertical) {
-        		//One of them will be 0
-            int rDir = Integer.compare(toRow, row);
-            int cDir = Integer.compare(toCol, col);
-            
-            //Move one tile in the direction of where it wants to go
-            int rCheck = row + rDir;
-            int cCheck = col + cDir;
-            
-            while(rCheck != toRow || cCheck != toCol) {
-            		
-            		if(board[rCheck][cCheck] != null) {
-            			return false; //Another piece in its path
-            		}
-            		//Move again
-            		rCheck += rDir;
-            		cCheck += cDir;
-            }
-                	
-        		return true; 
+        if ((horizontal || vertical || diagonal) && !(toRow == row && toCol == col)) {
+            return isPathClear(toRow, toCol, board);
         }
-        	
-        //Bishop logic
-        if(diagonal) {
-        		int rDir = Integer.compare(toRow, row);
-            int cDir = Integer.compare(toCol, col);
-            
-            int rCheck = row + rDir;
-            int cCheck = col + cDir;
-            
-            while(rCheck != toRow || cCheck != toCol) {
-            		
-            		if(board[rCheck][cCheck] != null) {
-            			return false; //Another piece in its path
-            		}
-            		
-            		//Move again
-            		rCheck += rDir;
-            		cCheck += cDir;
-            }
-            
-            return true;
-        }
-        
         return false;
     }
 }

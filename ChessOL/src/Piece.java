@@ -15,4 +15,21 @@ public abstract class Piece {
     public String getType() {
         return this.getClass().getSimpleName(); // returns "Pawn", "Rook", etc.
     }
+
+    protected boolean isPathClear(int toRow, int toCol, Piece[][] board) {
+        int rDir = Integer.compare(toRow, row);
+        int cDir = Integer.compare(toCol, col);
+        
+        int rCheck = row + rDir;
+        int cCheck = col + cDir;
+        
+        while (rCheck != toRow || cCheck != toCol) {
+            if (board[rCheck][cCheck] != null) {
+                return false;
+            }
+            rCheck += rDir;
+            cCheck += cDir;
+        }
+        return true;
+    }
 }
