@@ -669,11 +669,22 @@ class Chess {
         const isEnPassant = piece.type === 'Pawn' && fromCol !== toCol && tempTarget === null;
         const epCaptured = isEnPassant ? this.board[fromRow][toCol] : null;
 
+        // Save original coordinates of the moving piece
+        const origRow = piece.row;
+        const origCol = piece.col;
+        const origMoved = piece.moved;
+
+        // Temporarily update piece coordinates
+        piece.row = toRow;
+        piece.col = toCol;
+        piece.moved = true;
+
         this.board[toRow][toCol] = piece;
         this.board[fromRow][fromCol] = null;
         if (isEnPassant) {
             this.board[fromRow][toCol] = null;
         }
+        
         const enemyPieces = isWhite ? this.blackPieces : this.whitePieces;
         if (tempTarget !== null) {
             const idx = enemyPieces.indexOf(tempTarget);
@@ -684,13 +695,22 @@ class Chess {
             if (idx !== -1) enemyPieces.splice(idx, 1);
         }
 
+        const friendlyPieces = isWhite ? this.whitePieces : this.blackPieces;
+        let pawnIdx = -1;
         let promotedPiece = null;
+
         if (promotion && promotion !== "None" && promotion !== "") {
-            if (promotion === "Q") promotedPiece = { type: 'Queen', row: toRow, col: toCol, isWhite };
-            else if (promotion === "R") promotedPiece = { type: 'Rook', row: toRow, col: toCol, isWhite };
-            else if (promotion === "B") promotedPiece = { type: 'Bishop', row: toRow, col: toCol, isWhite };
-            else if (promotion === "N") promotedPiece = { type: 'Knight', row: toRow, col: toCol, isWhite };
+            if (promotion === "Q") promotedPiece = { type: 'Queen', row: toRow, col: toCol, isWhite, moved: true };
+            else if (promotion === "R") promotedPiece = { type: 'Rook', row: toRow, col: toCol, isWhite, moved: true, isOriginalRook: false };
+            else if (promotion === "B") promotedPiece = { type: 'Bishop', row: toRow, col: toCol, isWhite, moved: true };
+            else if (promotion === "N") promotedPiece = { type: 'Knight', row: toRow, col: toCol, isWhite, moved: true };
+            
             this.board[toRow][toCol] = promotedPiece;
+
+            pawnIdx = friendlyPieces.indexOf(piece);
+            if (pawnIdx !== -1) {
+                friendlyPieces[pawnIdx] = promotedPiece;
+            }
         }
 
         const opponentInCheck = this.isInCheck(!isWhite);
@@ -700,7 +720,15 @@ class Chess {
         const opponentHasMoves = this.hasLegalMove(!isWhite);
         this.whiteTurn = oldTurn;
 
-        // Restore board
+        // Restore friendly pieces and board
+        if (promotedPiece !== null && pawnIdx !== -1) {
+            friendlyPieces[pawnIdx] = piece;
+        }
+
+        piece.row = origRow;
+        piece.col = origCol;
+        piece.moved = origMoved;
+
         this.board[toRow][toCol] = tempTarget;
         this.board[fromRow][fromCol] = piece;
         if (isEnPassant) {
