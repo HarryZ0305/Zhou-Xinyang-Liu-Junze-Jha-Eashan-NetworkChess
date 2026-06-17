@@ -25,12 +25,11 @@ public class GUI extends JFrame {
     private JPanel cards = new JPanel(new CardLayout());
     private LogPane logArea = new LogPane(); // Scrolling log holding chat and move history; also the source for exportHistory().
     private JTextField inputField = new JTextField(); // Single-line chat input; Enter triggers a CHAT: packet.
-    private PrintWriter out; // Write side of the socket; null when not connected.
+    private ChessNetwork network; // Decoupled network manager.
     Game game = new Game(); // The authoritative model. Re-created on rematch/new connection.
     ActiveBoardPanel activeBoard; // Custom-painted board panel; constructed inside the constructor.
     private HashMap<String, Image> pieceImages = new HashMap<>(); // Cache of sprite images keyed by "<Color><PieceType>".
     private boolean gameOver = false; // Global gate that suppresses input, ticks, and dialogs after end-of-game.
-    private Socket currentSocket; // Held so returnToMenu() can close it cleanly.
     private boolean playingWhite = true; // Which colour the local client controls; flipped for the joining peer.
     private boolean vsBot = false; // True iff the current game is local-vs-bot rather than networked.
     private JLabel statusLabel = new JLabel("STATUS: WAITING...", SwingConstants.CENTER);
@@ -261,10 +260,10 @@ public class GUI extends JFrame {
         workPanel.add(dashboardPanel, gbcWork);
 
         btnResign.addActionListener(e -> {
-            if (out != null && !gameOver && !vsBot) {
+            if (network != null && !gameOver && !vsBot) {
                 int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to resign?", "Resign", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    out.println("GAME:RESIGN");
+                    network.sendMessage("GAME:RESIGN");
                     showGameOverDialog("You resigned. Game Over.");
                 }
             } else if (vsBot && !gameOver) {
@@ -273,8 +272,8 @@ public class GUI extends JFrame {
         });
 
         btnDraw.addActionListener(e -> {
-            if (out != null && !gameOver && !vsBot) {
-                out.println("GAME:DRAW_OFFER");
+            if (network != null && !gameOver && !vsBot) {
+                network.sendMessage("GAME:DRAW_OFFER");
                 logArea.append("System: Draw offer sent...\n");
             } else if (vsBot && !gameOver) {
                 logArea.append("System: Bot accepted your draw offer.\n");
@@ -283,9 +282,9 @@ public class GUI extends JFrame {
         });
 
         inputField.addActionListener(e -> {
-            if (out != null) {
+            if (network != null) {
                 String msg = inputField.getText();
-                out.println("CHAT:" + msg);
+                network.sendMessage("CHAT:" + msg);
                 logArea.append("You: " + msg + "\n");
                 inputField.setText("");
             }
@@ -649,7 +648,7 @@ public class GUI extends JFrame {
      * so the receiver can detect desynchronisation.
      */
     private void attemptMove(int fromRow, int fromCol, int toRow, int toCol) {
-        if (!vsBot && out == null) {
+        if (!vsBot && network == null) {
             logArea.append("System: Not connected yet.\n");
             return;
         }
@@ -690,6 +689,10 @@ public class GUI extends JFrame {
             else pawnPromotion = "Q"; // Defaults to Queen if user closes dialog without choosing — almost always the right pick.
         }
 
+        String san = game.toAlgebraic(fromRow, fromCol, toRow, toCol, isWhite, pawnPromotion);
+        String formattedMove = game.formatMove(san);
+        game.sanMoves.add(san);
+
         game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Commit the move to the shared Game model.
         if (!pawnPromotion.equals("None")) {
             game.promotion(toRow, toCol, isWhite, pawnPromotion); // Replace the pawn on the back rank with the chosen piece.
@@ -699,20 +702,21 @@ public class GUI extends JFrame {
         if (givesCheck) logArea.append("Check!\n", true);
 
         game.whiteTurn = !game.whiteTurn; //Hand the turn over so canMove() will reject moves from the moved side.
+        game.recordState();
         activeBoard.repaint(); //Trigger paintComponent to redraw the new board state.
         whiteCapturedPanel.repaint(); //Refresh capture displays in case this move took a piece.
         blackCapturedPanel.repaint();
         announceEndIfOver(); //Detect mate or stalemate before the next click is accepted.
 
         if (vsBot) {
+            logArea.append(formattedMove + "\n");
             if (!gameOver) triggerBotMove();
         } else {
             String message = "MOVE:" + fromRow + "," + fromCol + "," + toRow + "," + toCol + "," + isWhite + "," + pawnPromotion + "," + givesCheck + "," + game.stateSignature().hashCode();
-            out.println(message);
+            network.sendMessage(message);
             
-            String pieceName = (isWhite ? "White " : "Black ") + p.getType();
-            if (out.checkError()) logArea.append("System: Send failed, connection lost.\n");
-            else logArea.append(pieceName + " moved " + fromRow + "," + fromCol + " -> " + toRow + "," + toCol + "\n");
+            if (network.isSendFailed()) logArea.append("System: Send failed, connection lost.\n");
+            else logArea.append(formattedMove + "\n");
         }
     }
 
@@ -759,14 +763,16 @@ public class GUI extends JFrame {
             final int fR = move[0], fC = move[1], tR = move[2], tC = move[3];
             final int promoChar = move[4];
             SwingUtilities.invokeLater(() -> { //Bounce mutations back onto the EDT
-                Piece p = game.board[fR][fC];
-                String pieceName = (p != null) ? "Black " + p.getType() : "Piece";
-
                 String promo = promoChar != -1 ? String.valueOf((char) promoChar) : "None";
+                String san = game.toAlgebraic(fR, fC, tR, tC, false, promo);
+                String formattedMove = game.formatMove(san);
+                game.sanMoves.add(san);
+
                 game.Move(fR, fC, tR, tC, false); //The bot always plays Black in this app.
                 if (!promo.equals("None")) game.promotion(tR, tC, false, promo);
                 if (game.isInCheck(true)) logArea.append("Check!\n", true); 
                 game.whiteTurn = !game.whiteTurn;
+                game.recordState();
 
                 //Bot plays instantly, but we charge its clock a realistic chunk of time.
                 long used = botThinkMillis();
@@ -783,8 +789,7 @@ public class GUI extends JFrame {
                 activeBoard.repaint();
                 whiteCapturedPanel.repaint();
                 blackCapturedPanel.repaint();
-                logArea.append("Bot " + pieceName + " moved " + fR + "," + fC + " -> " + tR + "," + tC
-                             + " (used " + String.format("%.1f", used / 1000.0) + "s)\n");
+                logArea.append("Bot: " + formattedMove + " (used " + String.format("%.1f", used / 1000.0) + "s)\n");
                 announceEndIfOver();
             });
         }).start();
@@ -803,7 +808,7 @@ public class GUI extends JFrame {
         stopGameClock();
 
         SwingUtilities.invokeLater(() -> {
-            String[] options = {"Rematch", "Export History", "Main Menu"};
+            String[] options = {"Rematch", "Export PGN", "Export Log", "Main Menu"};
             while (true) {
                 int choice = JOptionPane.showOptionDialog(this,
                     endMessage + "\nWhat would you like to do?",
@@ -816,21 +821,37 @@ public class GUI extends JFrame {
 
                 if (choice == 0) {
                     if (vsBot) startBotGame();
-                    else if (out != null) {
-                        out.println("REMATCH:REQUEST");
+                    else if (network != null) {
+                        network.sendMessage("REMATCH:REQUEST");
                         logArea.append("System: Rematch requested. Waiting for opponent...\n");
                     }
                     break;
                 } else if (choice == 1) {
+                    exportPGN();
+                } else if (choice == 2) {
                     exportHistory();
-                    // loop back to let player pick Rematch or Main Menu
                 } else {
-                    if (!vsBot && out != null) out.println("REMATCH:DECLINE");
+                    if (!vsBot && network != null) network.sendMessage("REMATCH:DECLINE");
                     returnToMenu();
                     break;
                 }
             }
         });
+    }
+
+    private void exportPGN() {
+        File dir = new File("history");
+        dir.mkdirs();
+        String ts = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
+        File file = new File(dir, "game_" + ts + ".pgn");
+        try (PrintWriter pw = new PrintWriter(new FileWriter(file))) {
+            pw.print(game.exportToPGN());
+            JOptionPane.showMessageDialog(this,
+                "Saved PGN to " + file.getPath(), "Exported PGN", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                "PGN Export failed: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     /**
@@ -1010,8 +1031,21 @@ public class GUI extends JFrame {
         if (!hasMove && inCheck) {
             String winner = sideToMove ? "Black" : "White";
             showGameOverDialog("Checkmate! " + winner + " wins.");
+            return;
         } else if (!hasMove) {
             showGameOverDialog("Stalemate. Draw.");
+            return;
+        }
+
+        String drawReason = game.getDrawReason();
+        if (drawReason != null) {
+            if (drawReason.equals("FiftyMoves")) {
+                showGameOverDialog("Draw by 50-move rule.");
+            } else if (drawReason.equals("Repetition")) {
+                showGameOverDialog("Draw by threefold repetition.");
+            } else if (drawReason.equals("InsufficientMaterial")) {
+                showGameOverDialog("Draw by insufficient material.");
+            }
         }
     }
 
@@ -1022,55 +1056,30 @@ public class GUI extends JFrame {
      *    or open a Socket to the supplied IP/port if joining);
      *  - assign colours — the server flips a coin, broadcasts COLOR:, and exchanges
      *    NAME: messages so both sides know who they're playing;
-     *  - read newline-delimited text packets from BufferedReader and route each one by
-     *    its prefix (COLOR:, NAME:, CHAT:, MOVE:, GAME:RESIGN/DRAW_*, REMATCH:*);
-     *  - for MOVE packets, parse the comma-separated payload back into ints/booleans,
-     *    replay the move on the local Game, repaint, and compare the embedded
-     *    state-signature hash against the locally computed hash to detect desync;
-     *  - marshal every UI mutation back onto the Event Dispatch Thread via invokeLater
-     *    because Swing components are not thread-safe.
+     *  - read newline-delimited text packets from BufferedReader and route each one by.
      */
     private void startNetwork(boolean isServer, String ip, int port) {
         game = new Game();
         gameOver = false;
         logArea.setText("");
 
-        // username.txt: first entry = host's name, second entry = client's name.
         localPlayerName = isServer ? game.whitePlayer.name : game.blackPlayer.name;
         opponentPlayerName = null;
 
         ((CardLayout)cards.getLayout()).show(cards, "WORK");
-        new Thread(() -> {
-            try {
-                // Connection setup: server uses a ServerSocket and blocks on accept();
-                // client opens a direct Socket to the supplied host/port. The
-                // try-with-resources on ServerSocket guarantees the listening port is
-                // released as soon as a client has connected (we only need one peer).
-                Socket s;
-                if (isServer) {
-                    logArea.append("Waiting for client on " + port + "...\n");
-                    try (ServerSocket ss = new ServerSocket(port)) {
-                        s = ss.accept();
-                    }
-                } else {
-                    logArea.append("Connecting to " + ip + ":" + port + "...\n");
-                    s = new Socket(ip, port);
-                }
-
-                // Assign to global variable so returnToMenu() can close it safely
-                currentSocket = s;
-                out = new PrintWriter(s.getOutputStream(), true);
-
+        
+        network = new ChessNetwork(new ChessNetworkListener() {
+            @Override
+            public void onConnected() {
                 logArea.append("System: Connected!\n");
                 if (isServer) {
-                    playingWhite = Math.random() < 0.5; // Random colour assignment so the host has no built-in side preference.
-                    out.println("COLOR:" + (playingWhite ? "black" : "white")); // Tell the client which colour IT plays (the opposite of the host).
-                    // Server colour already decided — apply own name and announce it back to the client.
+                    playingWhite = Math.random() < 0.5;
+                    network.sendMessage("COLOR:" + (playingWhite ? "black" : "white"));
                     SwingUtilities.invokeLater(() -> {
                         applyMyName();
                         refreshPlayerNames();
                     });
-                    out.println("NAME:" + localPlayerName); // Broadcast the host's name so the client can label the opponent card.
+                    network.sendMessage("NAME:" + localPlayerName);
                 }
                 SwingUtilities.invokeLater(() -> {
                     activeBoard.repaint();
@@ -1078,164 +1087,173 @@ public class GUI extends JFrame {
                     blackCapturedPanel.repaint();
                     startGameClock();
                 });
-                // Receive loop — wraps the socket's raw byte stream in a BufferedReader so
-                // packets can be consumed one line at a time. Each line begins with a short
-                // tag (COLOR:, NAME:, CHAT:, MOVE:, GAME:..., REMATCH:...) that determines
-                // how the payload is parsed and which UI action is triggered.
-                BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-                String line;
-                while ((line = in.readLine()) != null) { // readLine blocks until a newline or the socket closes (returns null).
-                    if (line.startsWith("COLOR:")) {
-                        boolean clientIsWhite = line.substring(6).equals("white"); // Strip "COLOR:" and parse the colour the server assigned.
-                        SwingUtilities.invokeLater(() -> {
-                            playingWhite = clientIsWhite; // Adopt the colour decided by the server side.
-                            applyMyName();
-                            refreshPlayerNames();
-                            activeBoard.repaint();
-                            whiteCapturedPanel.repaint();
-                            blackCapturedPanel.repaint();
-                        });
-                        // Client now knows its colour — reply with its own name so the server can populate the opponent card.
-                        out.println("NAME:" + localPlayerName);
-                    } else if (line.startsWith("NAME:")) {
-                        String oppName = line.substring(5); // Strip the "NAME:" prefix to recover the raw username string.
-                        SwingUtilities.invokeLater(() -> {
-                            opponentPlayerName = oppName;
-                            applyOpponentName(); // Routes the name to whichever Player object represents the opponent.
-                            refreshPlayerNames();
-                        });
-                    } else if (line.startsWith("CHAT:")) {
-                        String chatMsg = line.substring(5); // Strip "CHAT:" to leave just the chat body.
-                        SwingUtilities.invokeLater(() -> logArea.append("Opponent: " + chatMsg + "\n"));
-                    } else if (line.startsWith("MOVE:")) {
-                        // MOVE payload schema: from/to coordinates, mover colour, promotion
-                        // code, check flag, and (optionally) a state-signature hash. Strings
-                        // are parsed back into ints/booleans for replay on the local Game.
-                        String message = line.substring(5); // Strip "MOVE:" to expose the comma-separated payload.
-                        String[] parts = message.split(","); // Split into fields: from/to coords, colour, promo, check, sig.
-                        try {
-                            int fromRow = Integer.parseInt(parts[0]); // Source row index parsed from the wire format.
-                            int fromCol = Integer.parseInt(parts[1]);
-                            int toRow = Integer.parseInt(parts[2]);
-                            int toCol = Integer.parseInt(parts[3]);
-                            boolean isWhite = Boolean.parseBoolean(parts[4]); // Which colour just moved — needed for capture routing.
-                            String pawnPromotion = parts[5]; // "None" or one of Q/R/B/N.
-                            boolean isCheck = Boolean.parseBoolean(parts[6]); // Sender's claim that this move gives check.
-                            SwingUtilities.invokeLater(() -> {
-                                Piece p = game.board[fromRow][fromCol];
-                                String pieceName = (p != null) ? ((p.isWhite ? "White " : "Black ") + p.getType()) : "Piece";
-                                
-                                // Re-validate the peer's move against OUR rule engine.
-                                if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
-                                    logArea.append("Invalid move received from peer\n");
-                                    return;
-                                }
-                                game.Move(fromRow, fromCol, toRow, toCol, isWhite); // Replay the move locally
-                                if (!pawnPromotion.equals("None")) {
-                                    game.promotion(toRow, toCol, isWhite, pawnPromotion);
-                                }
-                            
-                                logArea.append("Opponent " + pieceName + " moved " + fromRow + "," + fromCol + " -> " + toRow + "," + toCol + "\n");
-                                if (isCheck) {
-                                    logArea.append("In Check!\n", true);
-                                }
-                                game.whiteTurn = !game.whiteTurn; // Mirror the turn flip
-                                activeBoard.repaint();
-                                whiteCapturedPanel.repaint();
-                                blackCapturedPanel.repaint();
-                                // Desync detection: each peer hashes its own post-move board
-                                // state and compares it against the hash the sender embedded
-                                // in the packet. A mismatch means the two boards no longer
-                                // agree — fairer to freeze play than to silently continue.
-                                if (parts.length >= 8) {
-                                    int peerSig = Integer.parseInt(parts[7]);
-                                    int localSig = game.stateSignature().hashCode();
-                                    if (localSig != peerSig) {
-                                        logArea.append("⚠ DESYNC: boards diverged (local=" + localSig + " peer=" + peerSig + "). Move not trusted.\n");
-                                        gameOver = true; //freeze play
-                                        stopGameClock();
-                                    }
-                                }
-                                announceEndIfOver();
-                            });
-                        } catch (Exception ex) {
-                            SwingUtilities.invokeLater(() -> logArea.append("MoveError: " + ex.getClass().getSimpleName() + ": " + ex.getMessage() + "\n"));
-                        }
-                    } else if (line.startsWith("GAME:RESIGN")) {
-                        SwingUtilities.invokeLater(() -> {
-                            showGameOverDialog("Opponent resigned. You win!");
-                        });
-                    } else if (line.startsWith("GAME:DRAW_OFFER")) {
-                        SwingUtilities.invokeLater(() -> {
-                            int response = JOptionPane.showConfirmDialog(this,
-                                "Opponent offered a draw. Accept?",
-                                "Draw Offer",
-                                JOptionPane.YES_NO_OPTION);
-                            if (response == JOptionPane.YES_OPTION) {
-                                out.println("GAME:DRAW_ACCEPT");
-                                showGameOverDialog("Draw agreed.");
-                            } else {
-                                out.println("GAME:DRAW_DECLINE");
-                            }
-                        });
-                    } else if (line.startsWith("GAME:DRAW_ACCEPT")) {
-                        SwingUtilities.invokeLater(() -> {
-                            showGameOverDialog("Opponent accepted the draw. Game Over.");
-                        });
-                    } else if (line.startsWith("GAME:DRAW_DECLINE")) {
-                        SwingUtilities.invokeLater(() -> {
-                            logArea.append("System: Opponent declined the draw.\n");
-                        });
-                    } else if (line.startsWith("REMATCH:REQUEST")) {
-                        SwingUtilities.invokeLater(() -> {
-                            int response = JOptionPane.showConfirmDialog(this,
-                                "Opponent requested a rematch. Accept?",
-                                "Rematch Request",
-                                JOptionPane.YES_NO_OPTION);
-                            if (response == JOptionPane.YES_OPTION) {
-                                out.println("REMATCH:ACCEPT");
-                                game = new Game();
-                                gameOver = false;
-                                applyMyName();
-                                applyOpponentName();
-                                logArea.append("System: Starting a new game...\n");
-                                activeBoard.repaint();
-                                whiteCapturedPanel.repaint();
-                                blackCapturedPanel.repaint();
-                                startGameClock();
-                            } else {
-                                out.println("REMATCH:DECLINE");
-                                returnToMenu();
-                            }
-                        });
-                    } else if (line.startsWith("REMATCH:ACCEPT")) {
-                        SwingUtilities.invokeLater(() -> {
-                            game = new Game();
-                            gameOver = false;
-                            applyMyName();
-                            applyOpponentName();
-                            logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
-                            activeBoard.repaint();
-                            whiteCapturedPanel.repaint();
-                            blackCapturedPanel.repaint();
-                            startGameClock();
-                        });
-                    } else if (line.startsWith("REMATCH:DECLINE")) {
-                        SwingUtilities.invokeLater(() -> {
-                            JOptionPane.showMessageDialog(this, "Opponent declined the rematch.");
-                            returnToMenu();
-                        });
-                    }
-                }
-                SwingUtilities.invokeLater(() -> logArea.append("System: Connection closed.\n"));
-            } catch (Exception e) {
+            }
+
+            @Override
+            public void onColorAssigned(boolean clientIsWhite) {
                 SwingUtilities.invokeLater(() -> {
-                    logArea.append("Error: " + e.getMessage() + "\n");
-                    JOptionPane.showMessageDialog(this, "Connection lost or opponent disconnected.");
+                    playingWhite = clientIsWhite;
+                    applyMyName();
+                    refreshPlayerNames();
+                    activeBoard.repaint();
+                    whiteCapturedPanel.repaint();
+                    blackCapturedPanel.repaint();
+                });
+                network.sendMessage("NAME:" + localPlayerName);
+            }
+
+            @Override
+            public void onNameReceived(String name) {
+                SwingUtilities.invokeLater(() -> {
+                    opponentPlayerName = name;
+                    applyOpponentName();
+                    refreshPlayerNames();
+                });
+            }
+
+            @Override
+            public void onChatReceived(String msg) {
+                SwingUtilities.invokeLater(() -> {
+                    if (msg.startsWith("System:")) {
+                        logArea.append(msg + "\n");
+                    } else {
+                        logArea.append("Opponent: " + msg + "\n");
+                    }
+                });
+            }
+
+            @Override
+            public void onMoveReceived(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite, String pawnPromotion, boolean isCheck, int peerSig) {
+                SwingUtilities.invokeLater(() -> {
+                    if (!game.canMove(fromRow, fromCol, toRow, toCol, isWhite)) {
+                        logArea.append("Invalid move received from peer\n");
+                        return;
+                    }
+                    String san = game.toAlgebraic(fromRow, fromCol, toRow, toCol, isWhite, pawnPromotion);
+                    String formattedMove = game.formatMove(san);
+                    game.sanMoves.add(san);
+
+                    game.Move(fromRow, fromCol, toRow, toCol, isWhite);
+                    if (!pawnPromotion.equals("None")) {
+                        game.promotion(toRow, toCol, isWhite, pawnPromotion);
+                    }
+                
+                    logArea.append("Opponent: " + formattedMove + "\n");
+                    if (isCheck) {
+                        logArea.append("In Check!\n", true);
+                    }
+                    game.whiteTurn = !game.whiteTurn;
+                    game.recordState();
+                    activeBoard.repaint();
+                    whiteCapturedPanel.repaint();
+                    blackCapturedPanel.repaint();
+
+                    if (peerSig != 0) {
+                        int localSig = game.stateSignature().hashCode();
+                        if (localSig != peerSig) {
+                            logArea.append("⚠ DESYNC: boards diverged (local=" + localSig + " peer=" + peerSig + "). Move not trusted.\n");
+                            gameOver = true;
+                            stopGameClock();
+                        }
+                    }
+                    announceEndIfOver();
+                });
+            }
+
+            @Override
+            public void onResigned() {
+                SwingUtilities.invokeLater(() -> showGameOverDialog("Opponent resigned. You win!"));
+            }
+
+            @Override
+            public void onDrawOffer() {
+                SwingUtilities.invokeLater(() -> {
+                    int response = JOptionPane.showConfirmDialog(GUI.this,
+                        "Opponent offered a draw. Accept?",
+                        "Draw Offer",
+                        JOptionPane.YES_NO_OPTION);
+                    if (response == JOptionPane.YES_OPTION) {
+                        network.sendMessage("GAME:DRAW_ACCEPT");
+                        showGameOverDialog("Draw agreed.");
+                    } else {
+                        network.sendMessage("GAME:DRAW_DECLINE");
+                    }
+                });
+            }
+
+            @Override
+            public void onDrawAccept() {
+                SwingUtilities.invokeLater(() -> showGameOverDialog("Opponent accepted the draw. Game Over."));
+            }
+
+            @Override
+            public void onDrawDecline() {
+                SwingUtilities.invokeLater(() -> logArea.append("System: Opponent declined the draw.\n"));
+            }
+
+            @Override
+            public void onRematchRequest() {
+                SwingUtilities.invokeLater(() -> {
+                    int response = JOptionPane.showConfirmDialog(GUI.this,
+                        "Opponent requested a rematch. Accept?",
+                        "Rematch Request",
+                        JOptionPane.YES_NO_OPTION);
+                    if (response == JOptionPane.YES_OPTION) {
+                        network.sendMessage("REMATCH:ACCEPT");
+                        game = new Game();
+                        gameOver = false;
+                        applyMyName();
+                        applyOpponentName();
+                        logArea.append("System: Starting a new game...\n");
+                        activeBoard.repaint();
+                        whiteCapturedPanel.repaint();
+                        blackCapturedPanel.repaint();
+                        startGameClock();
+                    } else {
+                        network.sendMessage("REMATCH:DECLINE");
+                        returnToMenu();
+                    }
+                });
+            }
+
+            @Override
+            public void onRematchAccept() {
+                SwingUtilities.invokeLater(() -> {
+                    game = new Game();
+                    gameOver = false;
+                    applyMyName();
+                    applyOpponentName();
+                    logArea.append("System: Opponent accepted rematch. Starting a new game...\n");
+                    activeBoard.repaint();
+                    whiteCapturedPanel.repaint();
+                    blackCapturedPanel.repaint();
+                    startGameClock();
+                });
+            }
+
+            @Override
+            public void onRematchDecline() {
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(GUI.this, "Opponent declined the rematch.");
                     returnToMenu();
                 });
             }
-        }).start();
+
+            @Override
+            public void onDisconnected(String reason) {
+                SwingUtilities.invokeLater(() -> {
+                    logArea.append("System: Connection lost (" + reason + ").\n");
+                    JOptionPane.showMessageDialog(GUI.this, "Connection lost: " + reason);
+                    returnToMenu();
+                });
+            }
+        });
+
+        if (isServer) {
+            network.startServer(port);
+        } else {
+            network.startClient(ip, port);
+        }
     }
 
     /**
@@ -1282,7 +1300,7 @@ public class GUI extends JFrame {
             addMouseListener(new java.awt.event.MouseAdapter() {
                 @Override
                 public void mousePressed(java.awt.event.MouseEvent e) {
-                    if (game == null || (!vsBot && out == null) || gameOver){
+                    if (game == null || (!vsBot && network == null) || gameOver){
                         return;
                     } 
                     // Convert pixel coordinates back to board indices. The display
@@ -1357,6 +1375,40 @@ public class GUI extends JFrame {
                 }
             }
 
+            // Draw last move highlight
+            if (game != null && game.lastMoveFromRow != -1) {
+                g2.setColor(new Color(255, 235, 59, 100)); // Soft semi-transparent yellow
+                int drFrom = flipped() ? 7 - game.lastMoveFromRow : game.lastMoveFromRow;
+                int dcFrom = flipped() ? 7 - game.lastMoveFromCol : game.lastMoveFromCol;
+                g2.fillRect(dcFrom * sq, drFrom * sq, sq, sq);
+                
+                int drTo = flipped() ? 7 - game.lastMoveToRow : game.lastMoveToRow;
+                int dcTo = flipped() ? 7 - game.lastMoveToCol : game.lastMoveToCol;
+                g2.fillRect(dcTo * sq, drTo * sq, sq, sq);
+            }
+
+            // Draw king in check highlight
+            if (game != null) {
+                if (game.isInCheck(true)) {
+                    Piece whiteKing = game.getKing(true);
+                    if (whiteKing != null) {
+                        int dr = flipped() ? 7 - whiteKing.row : whiteKing.row;
+                        int dc = flipped() ? 7 - whiteKing.col : whiteKing.col;
+                        g2.setColor(new Color(244, 67, 54, 120)); // Soft semi-transparent red
+                        g2.fillRect(dc * sq, dr * sq, sq, sq);
+                    }
+                }
+                if (game.isInCheck(false)) {
+                    Piece blackKing = game.getKing(false);
+                    if (blackKing != null) {
+                        int dr = flipped() ? 7 - blackKing.row : blackKing.row;
+                        int dc = flipped() ? 7 - blackKing.col : blackKing.col;
+                        g2.setColor(new Color(244, 67, 54, 120)); // Soft semi-transparent red
+                        g2.fillRect(dc * sq, dr * sq, sq, sq);
+                    }
+                }
+            }
+
             // Draw selection highlight — orange tint on the square the player has clicked.
             if (selectedRow != -1 && selectedCol != -1) {
                 int dr = flipped() ? 7 - selectedRow : selectedRow;
@@ -1424,14 +1476,10 @@ public class GUI extends JFrame {
      */
     private void returnToMenu() {
         stopGameClock();
-        try {
-            if (out != null) out.close();
-            if (currentSocket != null) currentSocket.close();
-        } catch (Exception ex) {
-            System.out.println("Error closing socket: " + ex.getMessage());
+        if (network != null) {
+            network.close();
         }
-        out = null;
-        currentSocket = null;
+        network = null;
         localPlayerName = null;
         opponentPlayerName = null;
         ((CardLayout)cards.getLayout()).show(cards, "MENU");
