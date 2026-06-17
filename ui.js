@@ -98,6 +98,13 @@ function selectPiece(r, c) {
 function handleSquareClick(r, c) {
     if (!gameActive) return;
 
+    if (selectedSquare && selectedSquare.row === r && selectedSquare.col === c) {
+        selectedSquare = null;
+        possibleMoves = [];
+        renderBoard();
+        return;
+    }
+
     if (selectedSquare && possibleMoves.some(m => m[0] === r && m[1] === c)) {
         tryMove(selectedSquare.row, selectedSquare.col, r, c);
         selectedSquare = null;
