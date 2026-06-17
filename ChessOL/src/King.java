@@ -11,7 +11,7 @@ public class King extends Piece {
             if(toRow == row && Math.abs(toCol - col) == 2){
             		int rookCol = toCol == col + 2 ? 7 : 0;
             		Piece rook = board[row][rookCol];
-            		if(rook instanceof Rook && !rook.moved){
+            		if(rook instanceof Rook && ((Rook) rook).isOriginalRook && rook.isWhite == this.isWhite && !rook.moved){
             			//check if path is clear
             			int step = toCol > col ? 1 : -1;
             			for(int c = col + step; c != rookCol; c += step){

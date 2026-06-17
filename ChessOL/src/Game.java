@@ -18,6 +18,13 @@ public class Game {
     // Captured pieces are kept in colour-keyed lists so the GUI can display each side's losses.
     public ArrayList<Piece> capturedWhite = new ArrayList<>();
     public ArrayList<Piece> capturedBlack = new ArrayList<>();
+    public int halfMoveClock = 0;
+    public ArrayList<String> positionHistory = new ArrayList<>();
+    public int lastMoveFromRow = -1;
+    public int lastMoveFromCol = -1;
+    public int lastMoveToRow = -1;
+    public int lastMoveToCol = -1;
+    public ArrayList<String> sanMoves = new ArrayList<>();
 
     /**
      * Builds a fresh game in the standard chess starting position. Populates the 2D board
@@ -76,6 +83,7 @@ public class Game {
         }
 
         whiteTurn = true; // White moves first by convention; flipping this is the only change needed for random starts.
+        positionHistory.add(stateSignature());
     }
 
     /**
@@ -103,6 +111,13 @@ public class Game {
             }
         }
         whiteTurn = src.whiteTurn;
+        halfMoveClock = src.halfMoveClock;
+        positionHistory = new ArrayList<>(src.positionHistory);
+        lastMoveFromRow = src.lastMoveFromRow;
+        lastMoveFromCol = src.lastMoveFromCol;
+        lastMoveToRow = src.lastMoveToRow;
+        lastMoveToCol = src.lastMoveToCol;
+        sanMoves = new ArrayList<>(src.sanMoves);
 
         // Captured lists are copied by value (new ArrayList from the source list) so the
         // copy's history can diverge from the original without aliasing.
@@ -129,7 +144,11 @@ public class Game {
                 break;
             case "Knight": np = new Knight(p.row, p.col, p.isWhite); break;
             case "Bishop": np = new Bishop(p.row, p.col, p.isWhite); break;
-            case "Rook":   np = new Rook(p.row, p.col, p.isWhite);   break;
+            case "Rook":
+                Rook rk = new Rook(p.row, p.col, p.isWhite);
+                rk.isOriginalRook = ((Rook) p).isOriginalRook;
+                np = rk;
+                break;
             case "Queen":  np = new Queen(p.row, p.col, p.isWhite);  break;
             case "King":   np = new King(p.row, p.col, p.isWhite);   break;
             default: return null; // unknown type means the source board is corrupt — propagate as null
@@ -231,11 +250,19 @@ public class Game {
                         kingCol = toCol;
                     } else {
                         Piece king = getKing(isWhite);
-                        kingRow = king.row;
-                        kingCol = king.col;
+                        if (king == null) {
+                            kingRow = -1;
+                            kingCol = -1;
+                        } else {
+                            kingRow = king.row;
+                            kingCol = king.col;
+                        }
                     }
 
-                    boolean putsKingInCheck = this.isInCheck(kingRow, kingCol, isWhite);
+                    boolean putsKingInCheck = false;
+                    if (kingRow != -1) {
+                        putsKingInCheck = this.isInCheck(kingRow, kingCol, isWhite);
+                    }
 
                     // Revert simulated move so the caller observes an unchanged board.
                     // Every mutation above is undone in reverse: square contents, captured
@@ -273,13 +300,28 @@ public class Game {
      * moves the piece on the 2D board array and updates its row/col/moved fields.
      */
     public void Move(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite){
+        Piece movingPiece = board[fromRow][fromCol];
+        if (movingPiece != null) {
+            boolean isCapture = (board[toRow][toCol] != null) || 
+                                (movingPiece instanceof Pawn && fromCol != toCol);
+            if (movingPiece instanceof Pawn || isCapture) {
+                halfMoveClock = 0;
+            } else {
+                halfMoveClock++;
+            }
+        }
+        
+        lastMoveFromRow = fromRow;
+        lastMoveFromCol = fromCol;
+        lastMoveToRow = toRow;
+        lastMoveToCol = toCol;
 
     	// Castling Logic — only triggered when the king slides two squares horizontally.
     	// The rook on the matching side is hopped over to land directly next to the king's
     	// destination, mirroring the standard chess castling motion.
     	if(Math.abs(toCol - fromCol) == 2 && board[fromRow][fromCol] instanceof King && !board[fromRow][fromCol].moved){
             int rookCol = toCol > fromCol ? 7 : 0;
-            if(board[fromRow][rookCol] instanceof Rook && !board[fromRow][rookCol].moved){
+            if(board[fromRow][rookCol] instanceof Rook && ((Rook) board[fromRow][rookCol]).isOriginalRook && board[fromRow][rookCol].isWhite == isWhite && !board[fromRow][rookCol].moved){
                 int newRookCol = toCol > fromCol ? toCol - 1 : toCol + 1;
                 board[fromRow][newRookCol] = board[fromRow][rookCol];
                 board[fromRow][rookCol] = null;
@@ -360,6 +402,11 @@ public class Game {
                 if (row == p.row + direction && Math.abs(col - p.col) == 1) {
                     return true;
                 }
+            } else if (p instanceof King) {
+                // Kings only attack adjacent squares; bypass castling rule checks
+                if (Math.abs(row - p.row) <= 1 && Math.abs(col - p.col) <= 1) {
+                    return true;
+                }
             } else if (p.checkRule(row, col, board)) {
                 return true;
             }
@@ -424,7 +471,9 @@ public class Game {
                 playerPieces.add(board[row][col]);
                 break;
             case "R":
-                board[row][col] = new Rook(row, col, isWhite);
+                Rook promotedRook = new Rook(row, col, isWhite);
+                promotedRook.isOriginalRook = false;
+                board[row][col] = promotedRook;
                 playerPieces.add(board[row][col]);
                 break;
             case "B":
@@ -489,6 +538,270 @@ public class Game {
         return sb.toString();
     }
 
+
+    public void recordState() {
+        positionHistory.add(stateSignature());
+    }
+
+    public boolean isInsufficientMaterial() {
+        int whiteKnights = 0, blackKnights = 0;
+        int whiteBishops = 0, blackBishops = 0;
+        int otherPieces = 0;
+        
+        int whiteBishopSquareColor = -1;
+        int blackBishopSquareColor = -1;
+        
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board[r][c];
+                if (p == null) continue;
+                String type = p.getType();
+                if (type.equals("King")) continue;
+                
+                if (p.isWhite) {
+                    if (type.equals("Knight")) {
+                        whiteKnights++;
+                    } else if (type.equals("Bishop")) {
+                        whiteBishops++;
+                        whiteBishopSquareColor = (r + c) % 2;
+                    } else {
+                        otherPieces++;
+                    }
+                } else {
+                    if (type.equals("Knight")) {
+                        blackKnights++;
+                    } else if (type.equals("Bishop")) {
+                        blackBishops++;
+                        blackBishopSquareColor = (r + c) % 2;
+                    } else {
+                        otherPieces++;
+                    }
+                }
+            }
+        }
+        
+        if (otherPieces > 0) return false;
+        
+        if (whiteKnights == 0 && blackKnights == 0 && whiteBishops == 0 && blackBishops == 0) {
+            return true;
+        }
+        
+        if (whiteBishops == 1 && whiteKnights == 0 && blackBishops == 0 && blackKnights == 0) {
+            return true;
+        }
+        if (blackBishops == 1 && blackKnights == 0 && whiteBishops == 0 && whiteKnights == 0) {
+            return true;
+        }
+        
+        if (whiteKnights == 1 && whiteBishops == 0 && blackBishops == 0 && blackKnights == 0) {
+            return true;
+        }
+        if (blackKnights == 1 && blackBishops == 0 && whiteBishops == 0 && whiteKnights == 0) {
+            return true;
+        }
+        
+        if (whiteBishops == 1 && blackBishops == 1 && whiteKnights == 0 && blackKnights == 0) {
+            return whiteBishopSquareColor == blackBishopSquareColor;
+        }
+        
+        return false;
+    }
+
+    public String getDrawReason() {
+        if (isInsufficientMaterial()) {
+            return "InsufficientMaterial";
+        }
+        if (halfMoveClock >= 100) {
+            return "FiftyMoves";
+        }
+        if (positionHistory.size() >= 3) {
+            String currentSig = stateSignature();
+            int count = 0;
+            for (String sig : positionHistory) {
+                if (sig.equals(currentSig)) {
+                    count++;
+                }
+            }
+            if (count >= 3) {
+                return "Repetition";
+            }
+        }
+        return null;
+    }
+
+    public String formatMove(String san) {
+        if (sanMoves.size() % 2 == 0) {
+            return (sanMoves.size() / 2 + 1) + ". " + san;
+        } else {
+            return (sanMoves.size() / 2 + 1) + "... " + san;
+        }
+    }
+
+    public String getPieceLetter(String type) {
+        switch (type) {
+            case "Knight": return "N";
+            case "Bishop": return "B";
+            case "Rook":   return "R";
+            case "Queen":  return "Q";
+            case "King":   return "K";
+            default:       return "";
+        }
+    }
+
+    public String toAlgebraic(int fromRow, int fromCol, int toRow, int toCol, boolean isWhite, String promotion) {
+        Piece piece = board[fromRow][fromCol];
+        if (piece == null) return "";
+
+        if (piece instanceof King && Math.abs(toCol - fromCol) == 2) {
+            return toCol > fromCol ? "O-O" : "O-O-O";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        String type = piece.getType();
+        if (type.equals("Pawn")) {
+            if (fromCol != toCol) {
+                sb.append((char) ('a' + fromCol));
+            }
+        } else {
+            sb.append(getPieceLetter(type));
+            
+            boolean sameFile = false;
+            boolean sameRank = false;
+            boolean ambiguous = false;
+            
+            ArrayList<Piece> friendlyPieces = isWhite ? whitePlayer.pieces : blackPlayer.pieces;
+            for (Piece p : friendlyPieces) {
+                if (p != piece && p.getType().equals(type)) {
+                    if (canMove(p.row, p.col, toRow, toCol, isWhite)) {
+                        ambiguous = true;
+                        if (p.col == fromCol) {
+                            sameFile = true;
+                        }
+                        if (p.row == fromRow) {
+                            sameRank = true;
+                        }
+                    }
+                }
+            }
+            
+            if (ambiguous) {
+                if (!sameFile) {
+                    sb.append((char) ('a' + fromCol));
+                } else if (!sameRank) {
+                    sb.append((char) ('8' - fromRow));
+                } else {
+                    sb.append((char) ('a' + fromCol));
+                    sb.append((char) ('8' - fromRow));
+                }
+            }
+        }
+
+        boolean isCapture = (board[toRow][toCol] != null) || 
+                            (piece instanceof Pawn && fromCol != toCol);
+        if (isCapture) {
+            if (type.equals("Pawn") && fromCol == toCol) {
+                // no-op
+            } else {
+                sb.append('x');
+            }
+        }
+
+        sb.append((char) ('a' + toCol));
+        sb.append((char) ('8' - toRow));
+
+        if (promotion != null && !promotion.equals("None") && !promotion.isEmpty()) {
+            sb.append('=').append(promotion);
+        }
+
+        Piece tempTarget = board[toRow][toCol];
+        boolean isEnPassant = piece instanceof Pawn && fromCol != toCol && tempTarget == null;
+        Piece epCaptured = isEnPassant ? board[fromRow][toCol] : null;
+
+        board[toRow][toCol] = piece;
+        board[fromRow][fromCol] = null;
+        if (isEnPassant) {
+            board[fromRow][toCol] = null;
+        }
+        ArrayList<Piece> enemyPieces = isWhite ? blackPlayer.pieces : whitePlayer.pieces;
+        if (tempTarget != null) {
+            enemyPieces.remove(tempTarget);
+        }
+        if (epCaptured != null) {
+            enemyPieces.remove(epCaptured);
+        }
+
+        Piece promotedPiece = null;
+        if (promotion != null && !promotion.equals("None") && !promotion.isEmpty()) {
+            if (promotion.equals("Q")) promotedPiece = new Queen(toRow, toCol, isWhite);
+            else if (promotion.equals("R")) promotedPiece = new Rook(toRow, toCol, isWhite);
+            else if (promotion.equals("B")) promotedPiece = new Bishop(toRow, toCol, isWhite);
+            else if (promotion.equals("N")) promotedPiece = new Knight(toRow, toCol, isWhite);
+            board[toRow][toCol] = promotedPiece;
+        }
+
+        boolean opponentInCheck = isInCheck(!isWhite);
+        
+        boolean oldTurn = whiteTurn;
+        whiteTurn = !isWhite;
+        boolean opponentHasMoves = hasLegalMove(!isWhite);
+        whiteTurn = oldTurn;
+
+        if (promotedPiece != null) {
+            board[toRow][toCol] = piece;
+        }
+
+        board[toRow][toCol] = tempTarget;
+        board[fromRow][fromCol] = piece;
+        if (isEnPassant) {
+            board[fromRow][toCol] = epCaptured;
+        }
+        if (tempTarget != null) {
+            enemyPieces.add(tempTarget);
+        }
+        if (epCaptured != null) {
+            enemyPieces.add(epCaptured);
+        }
+
+        if (opponentInCheck) {
+            if (!opponentHasMoves) {
+                sb.append('#');
+            } else {
+                sb.append('+');
+            }
+        }
+
+        return sb.toString();
+    }
+
+    public String exportToPGN() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[Event \"ChessOL Match\"]\n");
+        sb.append("[Site \"Network/Local\"]\n");
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy.MM.dd");
+        sb.append("[Date \"").append(sdf.format(new java.util.Date())).append("\"]\n");
+        sb.append("[Round \"1\"]\n");
+        sb.append("[White \"").append(whitePlayer != null ? whitePlayer.name : "White").append("\"]\n");
+        sb.append("[Black \"").append(blackPlayer != null ? blackPlayer.name : "Black").append("\"]\n");
+        
+        String result = "*";
+        boolean blackMated = isInCheck(false) && !hasLegalMove(false);
+        boolean whiteMated = isInCheck(true) && !hasLegalMove(true);
+        boolean draw = getDrawReason() != null || (!isInCheck(true) && !hasLegalMove(true)) || (!isInCheck(false) && !hasLegalMove(false));
+        if (blackMated) result = "1-0";
+        else if (whiteMated) result = "0-1";
+        else if (draw) result = "1/2-1/2";
+        sb.append("[Result \"").append(result).append("\"]\n\n");
+
+        for (int i = 0; i < sanMoves.size(); i++) {
+            if (i % 2 == 0) {
+                sb.append((i / 2 + 1)).append(". ");
+            }
+            sb.append(sanMoves.get(i)).append(" ");
+        }
+        sb.append(result).append("\n");
+        return sb.toString();
+    }
 
     public static void main(String[] args) {
         
